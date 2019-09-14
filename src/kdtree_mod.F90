@@ -51,22 +51,33 @@ contains
       call this%root_node%init()
       node => this%root_node
       ! Create global index array.
-      allocate(node%global_idx(num_point))
+      allocate(node%global_idx_array(num_point))
       do i = 1, num_point
-        node%global_idx(i) = i
+        node%global_idx_array(i) = i
       end do
+    end if
+    if (num_point == 1) then
+      node%x = x(:,1)
+      node%global_idx = node%global_idx_array(1)
+      call node%discard_arrays()
+      ! write(*, '("## leaf node ", I0)') node%id
+      ! write(*, '("## point = ", F6.2, X I0)') node%x, node%global_idx
+      ! pause
+      return
     end if
     call node%create_child_nodes(part_dim, xmed, num_dim, num_point)
 
     do i = 1, num_point
-      if (x(i,part_dim) <= xmed) then
-        call node%left %add_point(x(:,i), node%global_idx(i))
+      if (x(part_dim,i) <= xmed) then
+        call node%left %add_point(x(:,i), node%global_idx_array(i))
       else
-        call node%right%add_point(x(:,i), node%global_idx(i))
+        call node%right%add_point(x(:,i), node%global_idx_array(i))
+      end if
+      if (x(part_dim,i) == xmed) then
+        node%x = x(:,i)
+        node%global_idx = i
       end if
     end do
-    call node%left %end_point()
-    call node%right%end_point()
 
     ! write(*, '("===== ", I0)') node%id
     ! do i = 1, num_point
@@ -76,37 +87,46 @@ contains
     ! if (mod(i, 20) /= 1) write(*, *)
     ! write(*, '("-----")')
     ! write(*, '("xmed = ", F6.2)') node%xmed
+    ! write(*, '("cut point = ", F6.2, X, I0)') node%x(1), node%global_idx
     ! write(*, '("left = ", I0)') node%left%id
     ! do i = 1, node%left%num_point
-    !   write(*, '(I6)', advance='no') node%left%global_idx(i)
+    !   write(*, '(I6)', advance='no') node%left%global_idx_array(i)
     !   if (mod(i, 20) == 0) write(*, *)
     ! end do
     ! if (mod(i, 20) /= 1) write(*, *)
     ! do i = 1, node%left%num_point
-    !   write(*, '(F6.2)', advance='no') node%left%x(1,i)
+    !   write(*, '(F6.2)', advance='no') node%left%x_array(1,i)
     !   if (mod(i, 20) == 0) write(*, *)
     ! end do
     ! if (mod(i, 20) /= 1) write(*, *)
     ! write(*, '("right = ", I0)') node%right%id
     ! do i = 1, node%right%num_point
-    !   write(*, '(I6)', advance='no') node%right%global_idx(i)
+    !   write(*, '(I6)', advance='no') node%right%global_idx_array(i)
     !   if (mod(i, 20) == 0) write(*, *)
     ! end do
     ! if (mod(i, 20) /= 1) write(*, *)
     ! do i = 1, node%right%num_point
-    !   write(*, '(F6.2)', advance='no') node%right%x(1,i)
+    !   write(*, '(F6.2)', advance='no') node%right%x_array(1,i)
     !   if (mod(i, 20) == 0) write(*, *)
     ! end do
     ! if (mod(i, 20) /= 1) write(*, *)
     ! pause
 
+    ! Clean memory usage.
+    call node%discard_arrays()
+    call node%left %end_point()
+    call node%right%end_point()
+
     ! Recursively build subtrees.
-    if (node%left %num_point > 1) call this%build(node%left %x, root_node=node%left )
-    if (node%right%num_point > 1) call this%build(node%right%x, root_node=node%right)
+    call this%build(node%left %x_array, root_node=node%left )
+    call this%build(node%right%x_array, root_node=node%right)
 
   end subroutine kdtree_build
 
   recursive subroutine kdtree_search(this, x, ngb_idx, root_node)
+
+    ! Firstly, find an initial search path to the leaf node, and calculate the
+    ! distance between the node point and the query point.
 
     class(kdtree_type), intent(in) :: this
     real(8), intent(in) :: x(:)

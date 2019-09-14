@@ -10,9 +10,11 @@ module node_mod
     integer :: id = 1
     integer :: part_dim = 0
     real(8) :: xmed
+    real(8), allocatable :: x(:)
+    integer global_idx
     integer :: num_point = 0
-    real(8), allocatable :: x(:,:)
-    integer, allocatable :: global_idx(:)
+    real(8), allocatable :: x_array(:,:)
+    integer, allocatable :: global_idx_array(:)
     type(node_type), pointer :: parent  => null()
     type(node_type), pointer :: brother => null()
     type(node_type), pointer :: left    => null()
@@ -22,6 +24,7 @@ module node_mod
     procedure :: create_child_nodes => node_create_child_nodes
     procedure :: add_point => node_add_point
     procedure :: end_point => node_end_point
+    procedure :: discard_arrays => node_discard_arrays
     final :: node_final
   end type node_type
 
@@ -35,15 +38,15 @@ contains
     type(node_type), intent(in), target, optional :: parent
     type(node_type), intent(in), pointer, optional :: brother
 
-    if (allocated(this%x)) then
-      deallocate(this%x)
-      deallocate(this%global_idx)
-    end if
+    if (allocated(this%x               )) deallocate(this%x               )
+    if (allocated(this%x_array         )) deallocate(this%x_array         )
+    if (allocated(this%global_idx_array)) deallocate(this%global_idx_array)
     if (present(num_dim) .and. present(max_num_point)) then
-      allocate(this%x(num_dim,max_num_point))
-      allocate(this%global_idx(max_num_point))
+      allocate(this%x               (num_dim              ))
+      allocate(this%x_array         (num_dim,max_num_point))
+      allocate(this%global_idx_array(        max_num_point))
     end if
-    if (present(parent)) this%parent => parent
+    if (present(parent )) this%parent  => parent
     if (present(brother)) this%brother => brother
 
   end subroutine node_init
@@ -79,12 +82,12 @@ contains
     integer, intent(in) :: global_idx
 
     this%num_point = this%num_point + 1
-    if (this%num_point > size(this%x, 2)) then
+    if (this%num_point > size(this%x_array, 2)) then
       write(*, '("[Error]: ", A, ":", I0, ":", A)') __FILE__, __LINE__, 'Array size is not sufficient!'
       stop 1
     end if
-    this%x(:,this%num_point) = x
-    this%global_idx(this%num_point) = global_idx
+    this%x_array(:,this%num_point)        = x
+    this%global_idx_array(this%num_point) = global_idx
 
   end subroutine node_add_point
 
@@ -96,43 +99,53 @@ contains
     integer, allocatable :: itmp(:)
     integer m, n, i, j
 
-    m = size(this%x, 1)
+    m = size(this%x_array, 1)
     n = this%num_point
 
     allocate(rtmp(m,n))
-    allocate(itmp(n))
+    allocate(itmp(  n))
 
     do j = 1, n
       do i = 1, m
-        rtmp(i,j) = this%x(i,j)
+        rtmp(i,j) = this%x_array(i,j)
       end do
-      itmp(j) = this%global_idx(j)
+      itmp(j) = this%global_idx_array(j)
     end do
 
-    deallocate(this%x)
-    deallocate(this%global_idx)
+    deallocate(this%x_array         )
+    deallocate(this%global_idx_array)
 
-    allocate(this%x(m,n))
-    allocate(this%global_idx(n))
+    allocate(this%x_array         (m,n))
+    allocate(this%global_idx_array(  n))
 
-    this%x = rtmp
-    this%global_idx = itmp
+    this%x_array          = rtmp
+    this%global_idx_array = itmp
 
     deallocate(rtmp)
     deallocate(itmp)
 
   end subroutine node_end_point
 
+  subroutine node_discard_arrays(this)
+
+    ! Discard arrays since they are no longer needed.
+
+    class(node_type), intent(inout) :: this
+
+    if (allocated(this%x_array         )) deallocate(this%x_array         )
+    if (allocated(this%global_idx_array)) deallocate(this%global_idx_array)
+
+  end subroutine node_discard_arrays
+
   subroutine node_final(this)
 
     type(node_type), intent(inout) :: this
 
-    if (allocated(this%x)) then
-      deallocate(this%x)
-      deallocate(this%global_idx)
-    end if
-    if (associated(this%left )) deallocate(this%left )
-    if (associated(this%right)) deallocate(this%right)
+    if (allocated(this%x               )) deallocate(this%x               )
+    if (allocated(this%x_array         )) deallocate(this%x_array         )
+    if (allocated(this%global_idx_array)) deallocate(this%global_idx_array)
+    if (associated(this%left           )) deallocate(this%left            )
+    if (associated(this%right          )) deallocate(this%right           )
 
   end subroutine node_final
 
