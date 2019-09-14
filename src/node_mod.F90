@@ -9,7 +9,6 @@ module node_mod
   type node_type
     integer :: id = 1
     integer :: part_dim = 0
-    real(8) :: xmed
     real(8), allocatable :: x(:)
     integer global_idx
     integer :: num_point = 0
@@ -51,16 +50,14 @@ contains
 
   end subroutine node_init
 
-  subroutine node_create_child_nodes(this, part_dim, xmed, num_dim, max_num_point)
+  subroutine node_create_child_nodes(this, part_dim, num_dim, max_num_point)
 
     class(node_type), intent(inout) :: this
     integer, intent(in) :: part_dim
-    real(8), intent(in) :: xmed
     integer, intent(in) :: num_dim
     integer, intent(in) :: max_num_point
 
     this%part_dim = part_dim
-    this%xmed     = xmed
 
     if (associated(this%left )) deallocate(this%left )
     if (associated(this%right)) deallocate(this%right)
@@ -99,30 +96,32 @@ contains
     integer, allocatable :: itmp(:)
     integer m, n, i, j
 
-    m = size(this%x_array, 1)
-    n = this%num_point
+    if (this%num_point > 0) then
+      m = size(this%x_array, 1)
+      n = this%num_point
 
-    allocate(rtmp(m,n))
-    allocate(itmp(  n))
+      allocate(rtmp(m,n))
+      allocate(itmp(  n))
 
-    do j = 1, n
-      do i = 1, m
-        rtmp(i,j) = this%x_array(i,j)
+      do j = 1, n
+        do i = 1, m
+          rtmp(i,j) = this%x_array(i,j)
+        end do
+        itmp(j) = this%global_idx_array(j)
       end do
-      itmp(j) = this%global_idx_array(j)
-    end do
 
-    deallocate(this%x_array         )
-    deallocate(this%global_idx_array)
+      deallocate(this%x_array         )
+      deallocate(this%global_idx_array)
 
-    allocate(this%x_array         (m,n))
-    allocate(this%global_idx_array(  n))
+      allocate(this%x_array         (m,n))
+      allocate(this%global_idx_array(  n))
 
-    this%x_array          = rtmp
-    this%global_idx_array = itmp
+      this%x_array          = rtmp
+      this%global_idx_array = itmp
 
-    deallocate(rtmp)
-    deallocate(itmp)
+      deallocate(rtmp)
+      deallocate(itmp)
+    end if
 
   end subroutine node_end_point
 

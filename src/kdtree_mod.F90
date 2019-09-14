@@ -15,11 +15,11 @@ module kdtree_mod
 
 contains
 
-  recursive subroutine kdtree_build(this, x, root_node)
+  recursive subroutine kdtree_build(this, x, start_node)
 
     class(kdtree_type), intent(inout) :: this
     real(8), intent(in) :: x(:,:)
-    type(node_type), intent(inout), target, optional :: root_node
+    type(node_type), intent(inout), target, optional :: start_node
 
     integer num_point, num_dim, part_dim, i
     real(8) xvar(3), max_xvar
@@ -44,8 +44,8 @@ contains
     xmed = median(x(part_dim,:))
 
     ! Create tree structures.
-    if (present(root_node)) then
-      node => root_node
+    if (present(start_node)) then
+      node => start_node
     else
       allocate(this%root_node)
       call this%root_node%init()
@@ -65,17 +65,17 @@ contains
       ! pause
       return
     end if
-    call node%create_child_nodes(part_dim, xmed, num_dim, num_point)
+    call node%create_child_nodes(part_dim, num_dim, num_point)
 
     do i = 1, num_point
-      if (x(part_dim,i) <= xmed) then
+      if (x(part_dim,i) < xmed) then
         call node%left %add_point(x(:,i), node%global_idx_array(i))
-      else
+      else if (x(part_dim,i) > xmed) then
         call node%right%add_point(x(:,i), node%global_idx_array(i))
-      end if
-      if (x(part_dim,i) == xmed) then
+      else
+        ! Save the cut point.
         node%x = x(:,i)
-        node%global_idx = i
+        node%global_idx = node%global_idx_array(i)
       end if
     end do
 
@@ -86,7 +86,7 @@ contains
     ! end do
     ! if (mod(i, 20) /= 1) write(*, *)
     ! write(*, '("-----")')
-    ! write(*, '("xmed = ", F6.2)') node%xmed
+    ! write(*, '("xmed = ", F6.2)') xmed
     ! write(*, '("cut point = ", F6.2, X, I0)') node%x(1), node%global_idx
     ! write(*, '("left = ", I0)') node%left%id
     ! do i = 1, node%left%num_point
@@ -118,8 +118,16 @@ contains
     call node%right%end_point()
 
     ! Recursively build subtrees.
-    call this%build(node%left %x_array, root_node=node%left )
-    call this%build(node%right%x_array, root_node=node%right)
+    if (node%left%num_point > 0) then
+      call this%build(node%left%x_array, start_node=node%left)
+    else
+      deallocate(node%left)
+    end if
+    if (node%right%num_point > 0) then
+      call this%build(node%right%x_array, start_node=node%right)
+    else
+      deallocate(node%right)
+    end if
 
   end subroutine kdtree_build
 
