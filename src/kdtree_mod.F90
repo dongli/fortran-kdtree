@@ -15,11 +15,11 @@ module kdtree_mod
 
 contains
 
-  recursive subroutine kdtree_build(this, x, start_node)
+  recursive subroutine kdtree_build(this, x, start_node_)
 
     class(kdtree_type), intent(inout) :: this
     real(8), intent(in) :: x(:,:)
-    type(node_type), intent(inout), target, optional :: start_node
+    type(node_type), intent(inout), target, optional :: start_node_
 
     integer num_point, num_dim, part_dim, i
     real(8) xvar(3), max_xvar
@@ -44,8 +44,8 @@ contains
     xmed = median(x(part_dim,:))
 
     ! Create tree structures.
-    if (present(start_node)) then
-      node => start_node
+    if (present(start_node_)) then
+      node => start_node_
     else
       allocate(this%root_node)
       call this%root_node%init()
@@ -119,43 +119,112 @@ contains
 
     ! Recursively build subtrees.
     if (node%left%num_point > 0) then
-      call this%build(node%left%x_array, start_node=node%left)
+      call this%build(node%left%x_array, start_node_=node%left)
     else
       deallocate(node%left)
     end if
     if (node%right%num_point > 0) then
-      call this%build(node%right%x_array, start_node=node%right)
+      call this%build(node%right%x_array, start_node_=node%right)
     else
       deallocate(node%right)
     end if
 
   end subroutine kdtree_build
 
-  recursive subroutine kdtree_search(this, x, ngb_idx, root_node)
-
-    ! Firstly, find an initial search path to the leaf node, and calculate the
-    ! distance between the node point and the query point.
+  recursive subroutine kdtree_search(this, x, ngb_idx, start_node_, ngb_dist_, ngb_count_)
 
     class(kdtree_type), intent(in) :: this
     real(8), intent(in) :: x(:)
-    integer, intent(in) :: ngb_idx(:)
-    type(node_type), intent(in), target, optional :: root_node
+    integer, intent(inout) :: ngb_idx(:)
+    type(node_type), intent(in), target, optional :: start_node_
+    real(8), intent(inout), target, optional :: ngb_dist_(:)
+    integer, intent(inout), target, optional :: ngb_count_
+
+    real(8) dist, radius
+    integer i, j
+    logical replaced, should_enter
 
     type(node_type), pointer :: node
+    real(8), pointer :: ngb_dist(:)
+    integer, pointer :: ngb_count
 
-    if (present(root_node)) then
-      node => root_node
+    if (present(start_node_)) then
+      node => start_node_
+      ngb_dist => ngb_dist_
+      ngb_count => ngb_count_
     else
       node => this%root_node
+      allocate(ngb_dist(size(ngb_idx)))
+      allocate(ngb_count)
+      ngb_count = 0
     end if
-    if (node%num_point == 1) then
-
-    else
-      if (x(node%part_dim) <= node%xmed) then
-        call this%search(x, ngb_idx, root_node=node%left)
-      else
-        call this%search(x, ngb_idx, root_node=node%right)
+    dist = norm2(x - node%x)
+    ! This acts as a priority queue.
+    replaced = .false.
+    do i = 1, ngb_count
+      if (dist < ngb_dist(i)) then
+        ngb_count = min(ngb_count + 1, size(ngb_idx))
+        do j = ngb_count, i + 1, -1
+          ngb_dist(j) = ngb_dist(j-1)
+          ngb_idx (j) = ngb_idx (j-1)
+        end do
+        ngb_dist(i) = dist
+        ngb_idx (i) = node%global_idx
+        replaced = .true.
+        exit
       end if
+    end do
+    if (node%part_dim /= 0) then
+      ! Leaf node does not have part_dim.
+      radius = abs(x(node%part_dim) - node%x(node%part_dim))
+    end if
+    if (.not. replaced .and. ngb_count < size(ngb_idx)) then
+      ngb_count           = ngb_count + 1
+      ngb_dist(ngb_count) = dist
+      ngb_idx (ngb_count) = node%global_idx
+    end if
+
+    ! write(*, '("===== ", I0, X, I0)') node%id, node%global_idx
+    ! do i = 1, ngb_count
+    !   write(*, '(I8)', advance='no') ngb_idx(i)
+    !   if (mod(i, 20) == 0) write(*, *)
+    ! end do
+    ! write(*, *)
+    ! do i = 1, ngb_count
+    !   write(*, '(F8.4)', advance='no') ngb_dist(i)
+    !   if (mod(i, 20) == 0) write(*, *)
+    ! end do
+    ! write(*, *)
+    ! pause
+
+    if (associated(node%left)) then
+      should_enter = .false.
+      if (associated(node%right)) then
+        if (norm2(x - node%right%x) > radius) then
+          should_enter = .true.
+        end if
+      end if
+      if (should_enter .or. x(node%part_dim) < node%x(node%part_dim)) then
+          print *, 'Enter left node ', node%left%id
+        call this%search(x, ngb_idx, start_node_=node%left, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
+      end if
+    end if
+    if (associated(node%right)) then
+      should_enter = .false.
+      if (associated(node%left)) then
+        if (norm2(x - node%left%x) > radius) then
+          should_enter = .true.
+        end if
+      end if
+      if (should_enter .or. x(node%part_dim) > node%x(node%part_dim)) then
+        print *, 'Enter right node ', node%right%id
+        call this%search(x, ngb_idx, start_node_=node%right, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
+      end if
+    end if
+
+    if (.not. present(ngb_dist_)) then
+      deallocate(ngb_dist)
+      deallocate(ngb_count)
     end if
 
   end subroutine kdtree_search

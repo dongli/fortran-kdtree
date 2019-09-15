@@ -13,7 +13,8 @@ contains
     real(8) xc(size(x))
 
     xc = x; call qsort(xc)
-    res = xc(int(size(x) * 0.5))
+    ! NOTE: Plus 1 to avoid 0 index.
+    res = xc(int(size(x) * 0.5) + 1)
 
   end function median
 

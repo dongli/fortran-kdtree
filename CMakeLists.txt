@@ -3,7 +3,13 @@ cmake_minimum_required(VERSION 2.8)
 project(kdtree LANGUAGES Fortran)
 
 if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
-  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -ffpe-summary=none -fdefault-real-8 -ffree-line-length-none -Ofast -fopenmp")
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -ffree-line-length-none")
+endif ()
+
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -ffpe-summary=none -Ofast")
+else ()
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -Wall -Wextra -Warray-temporaries -Wconversion -fimplicit-none -fbacktrace -fcheck=all -ffpe-trap=zero,overflow,underflow -finit-real=nan")
 endif ()
 
 set(sources
