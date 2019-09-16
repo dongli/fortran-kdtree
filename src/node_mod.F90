@@ -12,6 +12,7 @@ module node_mod
     real(8), allocatable :: x(:)
     integer global_idx
     integer :: num_point = 0
+    ! The following two arrays are used at build time, after that they will be descarded.
     real(8), allocatable :: x_array(:,:)
     integer, allocatable :: global_idx_array(:)
     type(node_type), pointer :: parent  => null()

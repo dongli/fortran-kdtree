@@ -36,10 +36,10 @@ contains
   subroutine test_2d()
 
     real(8), allocatable :: x(:,:)
-    real(8) ngb_dist(20)
-    integer i, ngb_idx(20)
+    real(8) ngb_dist(10)
+    integer i, ngb_idx(10)
 
-    call node_placing([0.0d0,1.0d0,0.0d0,1.0d0], 5000, radius, x)
+    call node_placing([0.0d0,1.0d0,0.0d0,1.0d0], 500000, radius, x)
 
     call kdtree%build(x)
     call kdtree%search([0.5d0,0.5d0], ngb_idx, ngb_dist_=ngb_dist)
@@ -63,7 +63,7 @@ contains
 
     real(8), intent(in) :: x(2)
 
-    radius = 0.02d0
+    radius = 0.004d0
 
   end function radius
 

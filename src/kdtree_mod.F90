@@ -52,6 +52,7 @@ contains
       allocate(this%root_node)
       call this%root_node%init()
       node => this%root_node
+      node%num_point = num_point
       ! Create global index array.
       allocate(node%global_idx_array(num_point))
       do i = 1, num_point
@@ -152,9 +153,10 @@ contains
     real(8), intent(inout), target, optional :: ngb_dist_(:)
     integer, intent(inout), target, optional :: ngb_count_
 
-    real(8) dist, radius
+    real(8) dist
+    real(8) dist_hp ! Distance between query point and cutting hyperplane.
     integer i, j
-    logical replaced, should_enter
+    logical replaced
 
     type(node_type), pointer :: node
     real(8), pointer :: ngb_dist(:)
@@ -186,14 +188,12 @@ contains
         end do
         ngb_dist(i) = dist
         ngb_idx (i) = node%global_idx
-        replaced = .true.
+        replaced    = .true.
         exit
       end if
     end do
-    if (node%part_dim /= 0) then
-      ! Leaf node does not have part_dim.
-      radius = abs(x(node%part_dim) - node%x(node%part_dim))
-    end if
+    ! Leaf node does not have part_dim.
+    if (node%part_dim /= 0) dist_hp = abs(x(node%part_dim) - node%x(node%part_dim))
     if (.not. replaced .and. ngb_count < size(ngb_idx)) then
       ngb_count           = ngb_count + 1
       ngb_dist(ngb_count) = dist
@@ -214,25 +214,21 @@ contains
     ! pause
 
     if (associated(node%left)) then
-      should_enter = .false.
-      if (associated(node%right)) should_enter = norm2(x - node%right%x) > radius
-      should_enter = should_enter .or. dist > radius
-      if (should_enter .or. x(node%part_dim) < node%x(node%part_dim)) then
+      if (dist_hp < ngb_dist(ngb_count) .or. x(node%part_dim) < node%x(node%part_dim)) then
         call this%search(x, ngb_idx, start_node_=node%left, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
       end if
     end if
     if (associated(node%right)) then
-      should_enter = .false.
-      if (associated(node%left)) should_enter = norm2(x - node%left%x) > radius
-      should_enter = should_enter .or. dist > radius
-      if (should_enter .or. x(node%part_dim) > node%x(node%part_dim)) then
+      if (dist_hp < ngb_dist(ngb_count) .or. x(node%part_dim) > node%x(node%part_dim)) then
         call this%search(x, ngb_idx, start_node_=node%right, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
       end if
     end if
 
     if (.not. present(ngb_dist_ )) deallocate(ngb_dist )
     if (.not. present(ngb_count_)) deallocate(ngb_count)
-    if (.not. present(start_node_)) write(*, '("Access ", I0, " nodes.")') node_access_count
+    if (.not. present(start_node_)) then
+      write(*, '("Searched ", I0, " of ", I0, " nodes.")') node_access_count, this%root_node%num_point
+    end if
 
   end subroutine kdtree_search
 
