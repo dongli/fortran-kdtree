@@ -13,6 +13,8 @@ module kdtree_mod
     final :: kdtree_final
   end type kdtree_type
 
+  integer node_access_count
+
 contains
 
   recursive subroutine kdtree_build(this, x, start_node_)
@@ -21,7 +23,7 @@ contains
     real(8), intent(in) :: x(:,:)
     type(node_type), intent(inout), target, optional :: start_node_
 
-    integer num_point, num_dim, part_dim, i
+    integer num_point, num_dim, part_dim, i ! , d
     real(8) xvar(3), max_xvar
     real(8) xmed ! Median coordinate along one dimension
     type(node_type), pointer :: node
@@ -61,7 +63,7 @@ contains
       node%global_idx = node%global_idx_array(1)
       call node%discard_arrays()
       ! write(*, '("## leaf node ", I0)') node%id
-      ! write(*, '("## point = ", F6.2, X I0)') node%x, node%global_idx
+      ! write(*, '("## point = ", 2F6.2, X I0)') node%x, node%global_idx
       ! pause
       return
     end if
@@ -79,37 +81,47 @@ contains
       end if
     end do
 
-    ! write(*, '("===== ", I0)') node%id
     ! do i = 1, num_point
-    !   write(*, '(F6.2)', advance='no') x(1,i)
-    !   if (mod(i, 20) == 0) write(*, *)
+    !   print *, node%global_idx_array(i), x(:,i)
     ! end do
-    ! if (mod(i, 20) /= 1) write(*, *)
+    ! write(*, '("===== ", I0)') node%id
+    ! do d = 1, num_dim
+    !   do i = 1, num_point
+    !     write(*, '(F6.2)', advance='no') x(d,i)
+    !     if (mod(i, 50) == 0) write(*, *)
+    !   end do
+    !   if (mod(i, 50) /= 1) write(*, *)
+    ! end do
     ! write(*, '("-----")')
+    ! write(*, '("part_dim = ", I0)') part_dim
     ! write(*, '("xmed = ", F6.2)') xmed
-    ! write(*, '("cut point = ", F6.2, X, I0)') node%x(1), node%global_idx
+    ! write(*, '("cut point = ", 2F6.2, X, I0)') node%x(:), node%global_idx
     ! write(*, '("left = ", I0)') node%left%id
     ! do i = 1, node%left%num_point
     !   write(*, '(I6)', advance='no') node%left%global_idx_array(i)
-    !   if (mod(i, 20) == 0) write(*, *)
+    !   if (mod(i, 50) == 0) write(*, *)
     ! end do
-    ! if (mod(i, 20) /= 1) write(*, *)
-    ! do i = 1, node%left%num_point
-    !   write(*, '(F6.2)', advance='no') node%left%x_array(1,i)
-    !   if (mod(i, 20) == 0) write(*, *)
+    ! if (mod(i, 50) /= 1) write(*, *)
+    ! do d = 1, num_dim
+    !   do i = 1, node%left%num_point
+    !     write(*, '(F6.2)', advance='no') node%left%x_array(d,i)
+    !     if (mod(i, 50) == 0) write(*, *)
+    !   end do
+    !   if (mod(i, 50) /= 1) write(*, *)
     ! end do
-    ! if (mod(i, 20) /= 1) write(*, *)
     ! write(*, '("right = ", I0)') node%right%id
     ! do i = 1, node%right%num_point
     !   write(*, '(I6)', advance='no') node%right%global_idx_array(i)
-    !   if (mod(i, 20) == 0) write(*, *)
+    !   if (mod(i, 50) == 0) write(*, *)
     ! end do
-    ! if (mod(i, 20) /= 1) write(*, *)
-    ! do i = 1, node%right%num_point
-    !   write(*, '(F6.2)', advance='no') node%right%x_array(1,i)
-    !   if (mod(i, 20) == 0) write(*, *)
+    ! if (mod(i, 50) /= 1) write(*, *)
+    ! do d = 1, num_dim
+    !   do i = 1, node%right%num_point
+    !     write(*, '(F6.2)', advance='no') node%right%x_array(d,i)
+    !     if (mod(i, 50) == 0) write(*, *)
+    !   end do
+    !   if (mod(i, 50) /= 1) write(*, *)
     ! end do
-    ! if (mod(i, 20) /= 1) write(*, *)
     ! pause
 
     ! Clean memory usage.
@@ -150,14 +162,18 @@ contains
 
     if (present(start_node_)) then
       node => start_node_
-      ngb_dist => ngb_dist_
       ngb_count => ngb_count_
     else
       node => this%root_node
-      allocate(ngb_dist(size(ngb_idx)))
-      allocate(ngb_count)
-      ngb_count = 0
+      allocate(ngb_count); ngb_count = 0
+      node_access_count = 0
     end if
+    if (present(ngb_dist_)) then
+      ngb_dist => ngb_dist_
+    else
+      allocate(ngb_dist(size(ngb_idx)))
+    end if
+    node_access_count = node_access_count + 1
     dist = norm2(x - node%x)
     ! This acts as a priority queue.
     replaced = .false.
@@ -199,33 +215,24 @@ contains
 
     if (associated(node%left)) then
       should_enter = .false.
-      if (associated(node%right)) then
-        if (norm2(x - node%right%x) > radius) then
-          should_enter = .true.
-        end if
-      end if
+      if (associated(node%right)) should_enter = norm2(x - node%right%x) > radius
+      should_enter = should_enter .or. dist > radius
       if (should_enter .or. x(node%part_dim) < node%x(node%part_dim)) then
-          print *, 'Enter left node ', node%left%id
         call this%search(x, ngb_idx, start_node_=node%left, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
       end if
     end if
     if (associated(node%right)) then
       should_enter = .false.
-      if (associated(node%left)) then
-        if (norm2(x - node%left%x) > radius) then
-          should_enter = .true.
-        end if
-      end if
+      if (associated(node%left)) should_enter = norm2(x - node%left%x) > radius
+      should_enter = should_enter .or. dist > radius
       if (should_enter .or. x(node%part_dim) > node%x(node%part_dim)) then
-        print *, 'Enter right node ', node%right%id
         call this%search(x, ngb_idx, start_node_=node%right, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
       end if
     end if
 
-    if (.not. present(ngb_dist_)) then
-      deallocate(ngb_dist)
-      deallocate(ngb_count)
-    end if
+    if (.not. present(ngb_dist_ )) deallocate(ngb_dist )
+    if (.not. present(ngb_count_)) deallocate(ngb_count)
+    if (.not. present(start_node_)) write(*, '("Access ", I0, " nodes.")') node_access_count
 
   end subroutine kdtree_search
 
