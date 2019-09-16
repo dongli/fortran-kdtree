@@ -51,7 +51,7 @@ contains
 
     num_node = 0
     num_pdp = int(sqrt(dble(target_num_node)))
-    allocate(pdp(2,int(0.5 * target_num_node))) ! Allocate more memory to accommodate increasing PDPs.
+    allocate(pdp(2,target_num_node)) ! Allocate more memory to accommodate increasing PDPs.
     allocate(xy(2,target_num_node))
 
     ! Place initial PDPs along bottom.
@@ -60,7 +60,6 @@ contains
       pdp(1,i) = box(1) + dx * (i - 0.5)
       call random_number(rand)
       pdp(2,i) = box(3) + 1.0d-4 * rand
-      ! print *, i, pdp(:,i)
     end do
 
     ! Find the lowest PDP.
@@ -93,21 +92,14 @@ contains
         angle_right = atan2(pdp(2,idx_right) - xy(2,num_node), pdp(1,idx_right) - xy(1,num_node))
       end if
       nw = idx_right - idx_left + 1
-      ! print *, '## idx_left =', idx_left
-      ! print *, '## idx_right =', idx_right
-      ! print *, '## nw =', nw
-      ! print *, '## angle_left =', angle_left
-      ! print *, '## angle_right =', angle_right
       if (nw > adj_num_pdp) then
         ! There are more PDPs contained in the circle.
         do i = idx_left + adj_num_pdp, num_pdp - nw + adj_num_pdp
-          ! print *, i+nw-adj_num_pdp, '->', i
           pdp(:,i) = pdp(:,i+nw-adj_num_pdp)
         end do
       else if (nw < adj_num_pdp) then
         ! There are less PDPs contained in the circle.
         do i = num_pdp - nw + adj_num_pdp, idx_left + adj_num_pdp, -1
-          ! print *, i+nw-adj_num_pdp, '->', i
           pdp(:,i) = pdp(:,i+nw-adj_num_pdp)
         end do
       end if
@@ -127,25 +119,15 @@ contains
       end if
       ! Find the next lowest PDP.
       ym = minval(pdp(2,:num_pdp)); im = minloc(pdp(2,:num_pdp))
-      ! write(*, *) '-----'
-      ! write(*, *) '+ node ', num_node, xy(:,num_node)
-      ! write(*, *) 'num_pdp =', num_pdp
-      ! do i = 1, num_pdp
-      !   print *, i, pdp(:,i)
-      ! end do
-      ! call debug_write(num_pdp, pdp, num_node, xy)
-      ! pause
     end do
     call debug_write(num_pdp, pdp, num_node, xy)
 
-    deallocate(pdp)
-
     ! Clean zeros from output array.
-    allocate(pdp(2,num_node))
-    pdp = xy(:,:num_node)
+    pdp(:,:num_node) = xy(:,:num_node)
     deallocate(xy)
     allocate(xy(2,num_node))
     xy = pdp
+
     deallocate(pdp)
 
   end subroutine node_placing

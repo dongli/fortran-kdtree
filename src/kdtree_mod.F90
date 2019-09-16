@@ -23,7 +23,7 @@ contains
     real(8), intent(in) :: x(:,:)
     type(node_type), intent(inout), target, optional :: start_node_
 
-    integer num_point, num_dim, part_dim, i ! , d
+    integer num_point, num_dim, part_dim, i, d
     real(8) xvar(3), max_xvar
     real(8) xmed ! Median coordinate along one dimension
     type(node_type), pointer :: node
@@ -34,11 +34,11 @@ contains
     ! Calculate the variance along each dimension, and choose the dimension with the
     ! largest value as the partition dimension.
     max_xvar = -1
-    do i = 1, num_dim
-      xvar(i) = variance(x(i,:))
-      if (max_xvar < xvar(i)) then
-        max_xvar = xvar(i)
-        part_dim = i
+    do d = 1, num_dim
+      xvar(d) = variance(x(d,:))
+      if (max_xvar < xvar(d)) then
+        max_xvar = xvar(d)
+        part_dim = d
       end if
     end do
 
@@ -60,12 +60,10 @@ contains
       end do
     end if
     if (num_point == 1) then
+      ! Reach the leaf node, return back.
       node%x = x(:,1)
       node%global_idx = node%global_idx_array(1)
       call node%discard_arrays()
-      ! write(*, '("## leaf node ", I0)') node%id
-      ! write(*, '("## point = ", 2F6.2, X I0)') node%x, node%global_idx
-      ! pause
       return
     end if
     call node%create_child_nodes(part_dim, num_dim, num_point)
@@ -81,49 +79,6 @@ contains
         node%global_idx = node%global_idx_array(i)
       end if
     end do
-
-    ! do i = 1, num_point
-    !   print *, node%global_idx_array(i), x(:,i)
-    ! end do
-    ! write(*, '("===== ", I0)') node%id
-    ! do d = 1, num_dim
-    !   do i = 1, num_point
-    !     write(*, '(F6.2)', advance='no') x(d,i)
-    !     if (mod(i, 50) == 0) write(*, *)
-    !   end do
-    !   if (mod(i, 50) /= 1) write(*, *)
-    ! end do
-    ! write(*, '("-----")')
-    ! write(*, '("part_dim = ", I0)') part_dim
-    ! write(*, '("xmed = ", F6.2)') xmed
-    ! write(*, '("cut point = ", 2F6.2, X, I0)') node%x(:), node%global_idx
-    ! write(*, '("left = ", I0)') node%left%id
-    ! do i = 1, node%left%num_point
-    !   write(*, '(I6)', advance='no') node%left%global_idx_array(i)
-    !   if (mod(i, 50) == 0) write(*, *)
-    ! end do
-    ! if (mod(i, 50) /= 1) write(*, *)
-    ! do d = 1, num_dim
-    !   do i = 1, node%left%num_point
-    !     write(*, '(F6.2)', advance='no') node%left%x_array(d,i)
-    !     if (mod(i, 50) == 0) write(*, *)
-    !   end do
-    !   if (mod(i, 50) /= 1) write(*, *)
-    ! end do
-    ! write(*, '("right = ", I0)') node%right%id
-    ! do i = 1, node%right%num_point
-    !   write(*, '(I6)', advance='no') node%right%global_idx_array(i)
-    !   if (mod(i, 50) == 0) write(*, *)
-    ! end do
-    ! if (mod(i, 50) /= 1) write(*, *)
-    ! do d = 1, num_dim
-    !   do i = 1, node%right%num_point
-    !     write(*, '(F6.2)', advance='no') node%right%x_array(d,i)
-    !     if (mod(i, 50) == 0) write(*, *)
-    !   end do
-    !   if (mod(i, 50) /= 1) write(*, *)
-    ! end do
-    ! pause
 
     ! Clean memory usage.
     call node%discard_arrays()
@@ -199,19 +154,6 @@ contains
       ngb_dist(ngb_count) = dist
       ngb_idx (ngb_count) = node%global_idx
     end if
-
-    ! write(*, '("===== ", I0, X, I0)') node%id, node%global_idx
-    ! do i = 1, ngb_count
-    !   write(*, '(I8)', advance='no') ngb_idx(i)
-    !   if (mod(i, 20) == 0) write(*, *)
-    ! end do
-    ! write(*, *)
-    ! do i = 1, ngb_count
-    !   write(*, '(F8.4)', advance='no') ngb_dist(i)
-    !   if (mod(i, 20) == 0) write(*, *)
-    ! end do
-    ! write(*, *)
-    ! pause
 
     if (associated(node%left)) then
       if (dist_hp < ngb_dist(ngb_count) .or. x(node%part_dim) < node%x(node%part_dim)) then

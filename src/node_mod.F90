@@ -16,7 +16,6 @@ module node_mod
     real(8), allocatable :: x_array(:,:)
     integer, allocatable :: global_idx_array(:)
     type(node_type), pointer :: parent  => null()
-    type(node_type), pointer :: brother => null()
     type(node_type), pointer :: left    => null()
     type(node_type), pointer :: right   => null()
   contains
@@ -30,13 +29,12 @@ module node_mod
 
 contains
 
-  subroutine node_init(this, num_dim, max_num_point, parent, brother)
+  subroutine node_init(this, num_dim, max_num_point, parent)
 
     class(node_type), intent(inout) :: this
     integer, intent(in), optional :: num_dim
     integer, intent(in), optional :: max_num_point
     type(node_type), intent(in), target, optional :: parent
-    type(node_type), intent(in), pointer, optional :: brother
 
     if (allocated(this%x               )) deallocate(this%x               )
     if (allocated(this%x_array         )) deallocate(this%x_array         )
@@ -47,7 +45,6 @@ contains
       allocate(this%global_idx_array(        max_num_point))
     end if
     if (present(parent )) this%parent  => parent
-    if (present(brother)) this%brother => brother
 
   end subroutine node_init
 
@@ -68,8 +65,8 @@ contains
     this%left %id = this%id * 10
     this%right%id = this%id * 10 + 1
 
-    call this%left %init(num_dim, max_num_point, this, this%right)
-    call this%right%init(num_dim, max_num_point, this, this%left )
+    call this%left %init(num_dim, max_num_point, this)
+    call this%right%init(num_dim, max_num_point, this)
 
   end subroutine node_create_child_nodes
 
