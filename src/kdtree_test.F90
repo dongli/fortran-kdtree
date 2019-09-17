@@ -13,6 +13,7 @@ program kdtree_test
   allocate(seed(n)); seed = 2
   call random_seed(put=seed)
 
+  call test_1d()
   call test_2d()
 
 contains
@@ -39,7 +40,7 @@ contains
     real(8) ngb_dist(10)
     integer i, ngb_idx(10)
 
-    call node_placing([0.0d0,1.0d0,0.0d0,1.0d0], 500000, radius, x)
+    call node_placing([0.0d0,1.0d0,0.0d0,1.0d0], radius, x)
 
     call kdtree%build(x)
     call kdtree%search([0.5d0,0.5d0], ngb_idx, ngb_dist_=ngb_dist)

@@ -25,14 +25,15 @@ module node_placing_mod
 
 contains
 
-  subroutine node_placing(box, target_num_node, radius, xy)
+  subroutine node_placing(box, radius, xy, init_num_node_)
 
     real(8), intent(in) :: box(4)
-    integer, intent(in) :: target_num_node
     procedure(node_radius_interface) radius
     real(8), intent(out), allocatable :: xy(:,:)
+    integer, intent(in), optional :: init_num_node_
 
-    integer num_node
+    integer init_num_node ! Initial guessed node number
+    integer num_node      ! Node number
     integer num_pdp       ! PDP number
     integer i, im(1), nw
     integer outside_count ! Counter for PDPs that are outside box
@@ -49,10 +50,13 @@ contains
 
     if (allocated(xy)) deallocate(xy)
 
+    ! Set the initial node number.
+    init_num_node = merge(init_num_node_, 10000, present(init_num_node_))
+
     num_node = 0
-    num_pdp = int(sqrt(dble(target_num_node)))
-    allocate(pdp(2,target_num_node)) ! Allocate more memory to accommodate increasing PDPs.
-    allocate(xy(2,target_num_node))
+    num_pdp = init_num_node
+    allocate(pdp(2,init_num_node)) ! Allocate more memory to accommodate increasing PDPs.
+    allocate(xy(2,init_num_node))
 
     ! Place initial PDPs along bottom.
     dx = (box(2) - box(1)) / num_pdp
@@ -64,7 +68,7 @@ contains
 
     ! Find the lowest PDP.
     ym = minval(pdp(2,:num_pdp)); im = minloc(pdp(2,:num_pdp))
-    do while (ym(1) <= box(4) .and. num_node < target_num_node)
+    do while (ym(1) <= box(4))
       num_node = num_node + 1
       ! Assign the lowest PDP as a node.
       xy(:,num_node) = pdp(:,im(1))
@@ -119,18 +123,48 @@ contains
       end if
       ! Find the next lowest PDP.
       ym = minval(pdp(2,:num_pdp)); im = minloc(pdp(2,:num_pdp))
+      ! Enlarge array size if necessary.
+      if (num_node == init_num_node) then
+        init_num_node = init_num_node * 2
+        call resize_array(xy, dim=[2], new_size=[init_num_node])
+      end if
     end do
-    call debug_write(num_pdp, pdp, num_node, xy)
 
     ! Clean zeros from output array.
-    pdp(:,:num_node) = xy(:,:num_node)
-    deallocate(xy)
-    allocate(xy(2,num_node))
-    xy = pdp
+    call resize_array(xy, dim=[2], new_size=[num_node])
 
     deallocate(pdp)
 
   end subroutine node_placing
+
+  subroutine resize_array(x, dim, new_size)
+
+    real(8), intent(inout), allocatable :: x(:,:)
+    integer, intent(in) :: dim(:)
+    integer, intent(in) :: new_size(:)
+
+    real(8), allocatable :: y(:,:)
+    integer n(2), i
+
+    n = shape(x)
+
+    do i = 1, size(dim)
+      n(dim(i)) = new_size(i)
+    end do
+
+    allocate(y(n(1),n(2)))
+
+    y(:n(1),:n(2)) = x(:n(1),:n(2))
+
+    deallocate(x)
+
+    allocate(x(n(1),n(2)))
+
+    x = y
+
+    deallocate(y)
+
+  end subroutine resize_array
 
   subroutine debug_write(num_pdp, pdp, num_node, node)
 
