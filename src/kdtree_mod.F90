@@ -5,6 +5,10 @@ module kdtree_mod
 
   implicit none
 
+  private
+
+  public kdtree_type
+
   type kdtree_type
     type(node_type), pointer :: root_node => null()
   contains

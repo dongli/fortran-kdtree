@@ -12,6 +12,9 @@ else ()
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -Wall -Wextra -Warray-temporaries -Wconversion -fimplicit-none -fbacktrace -fcheck=all -ffpe-trap=zero,overflow,underflow -finit-real=nan")
 endif ()
 
+set (CMAKE_Fortran_MODULE_DIRECTORY "${CMAKE_BINARY_DIR}")
+include_directories(${CMAKE_BINARY_DIR})
+
 set(sources
   src/utils_mod.F90
   src/node_mod.F90
