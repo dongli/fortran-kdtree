@@ -28,7 +28,7 @@ contains
     type(node_type), intent(inout), target, optional :: start_node_
 
     integer num_point, num_dim, part_dim, i, d
-    real(8) xvar(3), max_xvar
+    real(8) xvar, max_xvar
     real(8) xmed ! Median coordinate along one dimension
     type(node_type), pointer :: node
 
@@ -39,9 +39,9 @@ contains
     ! largest value as the partition dimension.
     max_xvar = -1
     do d = 1, num_dim
-      xvar(d) = variance(x(d,:))
-      if (max_xvar < xvar(d)) then
-        max_xvar = xvar(d)
+      xvar = variance(x(d,:))
+      if (max_xvar < xvar) then
+        max_xvar = xvar
         part_dim = d
       end if
     end do
@@ -123,10 +123,14 @@ contains
 
     if (present(start_node_)) then
       node => start_node_
-      ngb_count => ngb_count_
     else
       node => this%root_node
-      allocate(ngb_count); ngb_count = 0
+    end if
+    if (present(ngb_count_)) then
+      ngb_count => ngb_count_
+    else
+      allocate(ngb_count)
+      ngb_count = 0
       node_access_count = 0
     end if
     if (present(ngb_dist_)) then
@@ -134,8 +138,10 @@ contains
     else
       allocate(ngb_dist(size(ngb_idx)))
     end if
+
     node_access_count = node_access_count + 1
     dist = norm2(x - node%x)
+
     ! This acts as a priority queue.
     replaced = .false.
     do i = 1, ngb_count

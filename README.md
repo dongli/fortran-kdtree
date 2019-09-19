@@ -18,7 +18,7 @@ This repository is a Fortran implementation of KD-Tree. We need KD-Tree in scien
 
   call kdtree%build(x)
   do i = 1, size(x, 2)
-  	call kdtree%search(x(:,i), ngb_idx(:,i))
+    call kdtree%search(x(:,i), ngb_idx(:,i))
   end do
 
   ! Other works ...

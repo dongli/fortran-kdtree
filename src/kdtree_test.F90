@@ -5,23 +5,26 @@ program kdtree_test
 
   implicit none
 
-  integer n
+  integer num_seed
   integer, allocatable :: seed(:)
   type(kdtree_type) kdtree
 
-  call random_seed(n)
-  allocate(seed(n)); seed = 2
+  call random_seed(num_seed)
+  allocate(seed(num_seed))
+  seed = 2
   call random_seed(put=seed)
 
-  call test_1d()
+  ! call test_1d()
   call test_2d()
+
+  deallocate(seed)
 
 contains
 
   subroutine test_1d()
 
-    real(8) x(1,100)
-    integer i, ngb_idx(8)
+    real(8) x(1,10)
+    integer i, ngb_idx(4)
 
     do i = 1, size(x, 2)
       call random_number(x(1,i))
@@ -64,7 +67,11 @@ contains
 
     real(8), intent(in) :: x(2)
 
-    radius = 0.004d0
+    if (x(2) < 0.5) then
+      radius = 0.1d0
+    else
+      radius = 0.05d0
+    end if
 
   end function radius
 

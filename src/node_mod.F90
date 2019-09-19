@@ -15,9 +15,9 @@ module node_mod
     ! The following two arrays are used at build time, after that they will be descarded.
     real(8), allocatable :: x_array(:,:)
     integer, allocatable :: global_idx_array(:)
-    type(node_type), pointer :: parent  => null()
-    type(node_type), pointer :: left    => null()
-    type(node_type), pointer :: right   => null()
+    type(node_type), pointer :: parent => null()
+    type(node_type), pointer :: left   => null()
+    type(node_type), pointer :: right  => null()
   contains
     procedure :: init => node_init
     procedure :: create_child_nodes => node_create_child_nodes
