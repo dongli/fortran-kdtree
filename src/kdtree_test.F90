@@ -20,12 +20,15 @@ program kdtree_test
   seed = 2
   call random_seed(put=seed)
 
-  call test_case_create('Test 1D')
-
+  call test_case_create('Test 1D 1 of 10')
   call test_1d(10, 1)
+  call test_case_create('Test 1D 2 of 10')
   call test_1d(10, 2)
+  call test_case_create('Test 1D 3 of 10')
   call test_1d(10, 3)
+  call test_case_create('Test 1D 4 of 10')
   call test_1d(10, 4)
+  call test_case_create('Test 1D 5 of 10')
   call test_1d(10, 5)
   
   call test_case_create('Test 2D')
@@ -97,7 +100,7 @@ contains
 
     real(8), intent(in) :: x(2)
 
-    radius = 0.1d0
+    radius = 0.01d0
 
   end function radius
 

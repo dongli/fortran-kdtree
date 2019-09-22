@@ -59,9 +59,7 @@ contains
       node%num_point = num_point
       ! Create global index array.
       allocate(node%global_idx_array(num_point))
-      do i = 1, num_point
-        node%global_idx_array(i) = i
-      end do
+      node%global_idx_array = [(i, i = 1, num_point)]
     end if
     if (num_point == 1) then
       ! Reach the leaf node, return back.
@@ -113,10 +111,6 @@ contains
     integer, intent(inout), target, optional :: ngb_count_
 
     real(8) dist
-    real(8) dist_hp ! Distance between query point and cutting hyperplane.
-    integer i, j
-    logical replaced
-
     type(node_type), pointer :: node
     real(8), pointer :: ngb_dist(:)
     integer, pointer :: ngb_count
@@ -142,36 +136,16 @@ contains
     node_access_count = node_access_count + 1
     dist = norm2(x - node%x)
 
-    ! This acts as a priority queue.
-    replaced = .false.
-    do i = 1, ngb_count
-      if (dist < ngb_dist(i)) then
-        ngb_count = min(ngb_count + 1, size(ngb_idx))
-        do j = ngb_count, i + 1, -1
-          ngb_dist(j) = ngb_dist(j-1)
-          ngb_idx (j) = ngb_idx (j-1)
-        end do
-        ngb_dist(i) = dist
-        ngb_idx (i) = node%global_idx
-        replaced    = .true.
-        exit
-      end if
-    end do
-    ! Leaf node does not have part_dim.
-    if (node%part_dim /= 0) dist_hp = abs(x(node%part_dim) - node%x(node%part_dim))
-    if (.not. replaced .and. ngb_count < size(ngb_idx)) then
-      ngb_count           = ngb_count + 1
-      ngb_dist(ngb_count) = dist
-      ngb_idx (ngb_count) = node%global_idx
-    end if
+    call record_potential_ngb(ngb_count, ngb_idx, ngb_dist, dist, node%global_idx)
 
+    if (node%part_dim /= 0) dist = abs(x(node%part_dim) - node%x(node%part_dim))
     if (associated(node%left)) then
-      if (dist_hp < ngb_dist(ngb_count) .or. x(node%part_dim) < node%x(node%part_dim)) then
+      if (dist < ngb_dist(ngb_count) .or. x(node%part_dim) < node%x(node%part_dim)) then
         call this%search(x, ngb_idx, start_node_=node%left, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
       end if
     end if
     if (associated(node%right)) then
-      if (dist_hp < ngb_dist(ngb_count) .or. x(node%part_dim) > node%x(node%part_dim)) then
+      if (dist < ngb_dist(ngb_count) .or. x(node%part_dim) > node%x(node%part_dim)) then
         call this%search(x, ngb_idx, start_node_=node%right, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
       end if
     end if
@@ -191,5 +165,53 @@ contains
     if (associated(this%root_node)) deallocate(this%root_node)
 
   end subroutine kdtree_final
+
+  subroutine record_potential_ngb(ngb_count, ngb_idx, ngb_dist, dist, global_idx)
+
+    integer, intent(inout) :: ngb_count
+    integer, intent(inout) :: ngb_idx(:)
+    real(8), intent(inout) :: ngb_dist(:)
+    real(8), intent(in) :: dist
+    integer, intent(in) :: global_idx
+
+    integer i, j
+    logical replaced
+
+    ! This acts as a priority queue.
+    replaced = .false.
+    do i = 1, ngb_count
+      if (ngb_idx(i) == global_idx) return
+      if (dist < ngb_dist(i)) then
+        ngb_count = min(ngb_count + 1, size(ngb_idx))
+        do j = ngb_count, i + 1, -1
+          ngb_dist(j) = ngb_dist(j-1)
+          ngb_idx (j) = ngb_idx (j-1)
+        end do
+        ngb_dist(i) = dist
+        ngb_idx (i) = global_idx
+        replaced    = .true.
+        exit
+      end if
+    end do
+    if (.not. replaced .and. ngb_count < size(ngb_idx)) then
+      ngb_count           = ngb_count + 1
+      ngb_dist(ngb_count) = dist
+      ngb_idx (ngb_count) = global_idx
+    end if
+
+    ! write(*, '("===== ", I0, X, I0)') global_idx
+    ! do i = 1, ngb_count
+    !   write(*, '(I8)', advance='no') ngb_idx(i)
+    !   if (mod(i, 20) == 0) write(*, *)
+    ! end do
+    ! write(*, *)
+    ! do i = 1, ngb_count
+    !   write(*, '(F8.4)', advance='no') ngb_dist(i)
+    !   if (mod(i, 20) == 0) write(*, *)
+    ! end do
+    ! write(*, *)
+    ! pause
+
+  end subroutine record_potential_ngb
 
 end module kdtree_mod
