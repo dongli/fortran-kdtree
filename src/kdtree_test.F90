@@ -1,5 +1,6 @@
 program kdtree_test
 
+  use unit_test
   use node_placing_mod
   use kdtree_mod
 
@@ -9,31 +10,62 @@ program kdtree_test
   integer, allocatable :: seed(:)
   type(kdtree_type) kdtree
 
+  type(test_suite_type) test_suite
+
+  call test_suite_init('KD-Tree test')
+
+  ! Initialize random seeds.
   call random_seed(num_seed)
   allocate(seed(num_seed))
   seed = 2
   call random_seed(put=seed)
 
-  ! call test_1d()
+  call test_case_create('Test 1D')
+
+  call test_1d(10, 1)
+  call test_1d(10, 2)
+  call test_1d(10, 3)
+  call test_1d(10, 4)
+  call test_1d(10, 5)
+  
+  call test_case_create('Test 2D')
+
   call test_2d()
+
+  call test_suite_report()
+
+  call test_suite_final()
 
   deallocate(seed)
 
 contains
 
-  subroutine test_1d()
+  subroutine test_1d(num_point, num_ngb)
 
-    real(8) x(1,10)
-    integer i, ngb_idx(4)
+    integer, intent(in) :: num_point
+    integer, intent(in) :: num_ngb
+
+    real(8), allocatable :: x(:,:)
+    real(8), allocatable :: ngb_dist(:)
+    integer, allocatable :: ngb_idx(:)
+    integer i
+
+    allocate(x(1,num_point))
+    allocate(ngb_dist(num_ngb))
+    allocate(ngb_idx(num_ngb))
 
     do i = 1, size(x, 2)
       call random_number(x(1,i))
     end do
 
     call kdtree%build(x)
-    call kdtree%search([0.5d0], ngb_idx)
+    call kdtree%search([0.5d0], ngb_idx, ngb_dist_=ngb_dist)
 
-    write(*, *) ngb_idx
+    do i = 1, size(x, 2)
+      if (all(ngb_idx /= i)) then
+        call assert_true(all(norm2(x(:,i) - [0.5d0]) > ngb_dist), __FILE__, __LINE__)
+      end if
+    end do
 
   end subroutine test_1d
 
@@ -49,10 +81,8 @@ contains
     call kdtree%search([0.5d0,0.5d0], ngb_idx, ngb_dist_=ngb_dist)
 
     do i = 1, size(x, 2)
-      if (.not. any(ngb_idx == i)) then
-        if (any(norm2(x(:,i) - [0.5d0,0.5d0]) <= ngb_dist)) then
-          write(*, *) 'Failed to get neighbor ', i, x(:,i)
-        end if
+      if (all(ngb_idx /= i)) then
+        call assert_true(all(norm2(x(:,i) - [0.5d0,0.5d0]) > ngb_dist), __FILE__, __LINE__)
       end if
     end do
 
@@ -67,11 +97,7 @@ contains
 
     real(8), intent(in) :: x(2)
 
-    if (x(2) < 0.5) then
-      radius = 0.1d0
-    else
-      radius = 0.05d0
-    end if
+    radius = 0.1d0
 
   end function radius
 
