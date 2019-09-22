@@ -30,6 +30,10 @@ program kdtree_test
   call test_1d(10, 4)
   call test_case_create('Test 1D 5 of 10')
   call test_1d(10, 5)
+  call test_case_create('Test 1D 6 of 10')
+  call test_1d(10, 6)
+  call test_case_create('Test 1D 7 of 10')
+  call test_1d(10, 7)
   
   call test_case_create('Test 2D')
 
