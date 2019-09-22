@@ -80,7 +80,7 @@ contains
 
     real(8), allocatable :: x(:,:)
     real(8) ngb_dist(10)
-    integer i, ngb_idx(10)
+    integer i, j, ngb_idx(10), fail_count
 
     call node_placing([0.0d0,1.0d0,0.0d0,1.0d0], radius, x)
 
@@ -93,10 +93,18 @@ contains
       end if
     end do
 
-    do i = 1, size(ngb_idx)
-      write(*, '(I0, ",")', advance='no') ngb_idx(i)
+    fail_count = 0
+    do j = 1, size(x, 2)
+      call kdtree%search(x(:,j), ngb_idx, ngb_dist_=ngb_dist)
+      do i = 1, size(x, 2)
+        if (all(ngb_idx /= i)) then
+          if (.not. all(norm2(x(:,i) - x(:,j)) > ngb_dist)) then
+            fail_count = fail_count + 1
+          end if
+        end if
+      end do
     end do
-    write(*, *)
+    call assert_equal(fail_count, 0)
 
   end subroutine test_2d
 
@@ -104,7 +112,7 @@ contains
 
     real(8), intent(in) :: x(2)
 
-    radius = 0.01d0
+    radius = 0.008d0
 
   end function radius
 
