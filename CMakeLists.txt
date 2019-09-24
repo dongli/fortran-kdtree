@@ -15,7 +15,10 @@ endif ()
 set (CMAKE_Fortran_MODULE_DIRECTORY "${CMAKE_BINARY_DIR}")
 include_directories(${CMAKE_BINARY_DIR})
 
-add_subdirectory(lib/unit-test)
+if (EXISTS ${PROJECT_SOURCE_DIR}/lib/unit-test/CMakeLists.txt)
+  add_subdirectory(lib/unit-test)
+  set(RUN_TEST ON)
+endif ()
 
 set(sources
   src/utils_mod.F90
@@ -27,5 +30,7 @@ set(sources
 
 add_library(kdtree ${sources})
 
-add_executable(kdtree_test.exe src/kdtree_test.F90)
-target_link_libraries(kdtree_test.exe kdtree fortran_unit_test)
+if (RUN_TEST)
+  add_executable(kdtree_test.exe src/kdtree_test.F90)
+  target_link_libraries(kdtree_test.exe kdtree fortran_unit_test)
+endif ()
