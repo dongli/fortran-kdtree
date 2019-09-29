@@ -74,6 +74,9 @@ contains
       end if
     end do
 
+    deallocate(ngb_dist)
+    deallocate(ngb_idx)
+
   end subroutine test_1d
 
   subroutine test_2d()
