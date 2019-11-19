@@ -12,7 +12,9 @@ module kdtree_mod
   type kdtree_type
     type(node_type), pointer :: root_node => null()
   contains
-    procedure :: build => kdtree_build
+    procedure :: kdtree_build_1
+    procedure :: kdtree_build_2
+    generic :: build => kdtree_build_1, kdtree_build_2
     procedure :: search => kdtree_search
     final :: kdtree_final
   end type kdtree_type
@@ -21,7 +23,7 @@ module kdtree_mod
 
 contains
 
-  recursive subroutine kdtree_build(this, x, start_node_)
+  recursive subroutine kdtree_build_1(this, x, start_node_)
 
     class(kdtree_type), intent(inout) :: this
     real(8), intent(in) :: x(:,:)
@@ -99,22 +101,52 @@ contains
       deallocate(node%right)
     end if
 
-  end subroutine kdtree_build
+  end subroutine kdtree_build_1
 
-  recursive subroutine kdtree_search(this, x, ngb_idx, start_node_, ngb_dist_, ngb_count_)
+  subroutine kdtree_build_2(this, x, y)
+
+    class(kdtree_type), intent(inout) :: this
+    real(8), intent(in) :: x(:)
+    real(8), intent(in) :: y(:)
+
+    real(8), allocatable :: xy(:,:)
+
+    if (size(x) /= size(y)) then
+      stop '[Error]: kdtree_build: Dimensions of x and y is not the same!'
+    end if
+
+    allocate(xy(2,size(x)))
+
+    xy(1,:) = x
+    xy(2,:) = y
+
+    call this%build(xy)
+
+    deallocate(xy)
+
+  end subroutine kdtree_build_2
+
+  recursive subroutine kdtree_search(this, x, ngb_idx, mute, start_node_, ngb_dist_, ngb_count_)
 
     class(kdtree_type), intent(in) :: this
     real(8), intent(in) :: x(:)
     integer, intent(inout) :: ngb_idx(:)
+    logical, intent(in), optional :: mute
     type(node_type), intent(in), target, optional :: start_node_
     real(8), intent(inout), target, optional :: ngb_dist_(:)
     integer, intent(inout), target, optional :: ngb_count_
 
+    logical mute_
     real(8) dist
     type(node_type), pointer :: node
     real(8), pointer :: ngb_dist(:)
     integer, pointer :: ngb_count
 
+    if (present(mute)) then
+      mute_ = mute
+    else
+      mute_ = .true.
+    end if
     if (present(start_node_)) then
       node => start_node_
     else
@@ -163,7 +195,7 @@ contains
 
     if (.not. present(ngb_dist_ )) deallocate(ngb_dist )
     if (.not. present(ngb_count_)) deallocate(ngb_count)
-    if (.not. present(start_node_)) then
+    if (.not. present(start_node_) .and. .not. mute_) then
       write(*, '("Searched ", I0, " of ", I0, " nodes.")') node_access_count, this%root_node%num_point
     end if
 
