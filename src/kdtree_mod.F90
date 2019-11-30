@@ -16,6 +16,7 @@ module kdtree_mod
     procedure :: kdtree_build_2
     generic :: build => kdtree_build_1, kdtree_build_2
     procedure :: search => kdtree_search
+    procedure :: range_search => kdtree_range_search
     final :: kdtree_final
   end type kdtree_type
 
@@ -200,6 +201,76 @@ contains
     end if
 
   end subroutine kdtree_search
+
+  subroutine kdtree_range_search(this, x, ngb_idx, radius, ngb_dist, ngb_bunch)
+
+    class(kdtree_type), intent(in) :: this
+    real(8), intent(in) :: x(:)
+    integer, intent(inout), allocatable :: ngb_idx(:)
+    real(8), intent(in) :: radius
+    real(8), intent(inout), allocatable, optional :: ngb_dist(:)
+    integer, intent(in), optional :: ngb_bunch
+
+    integer nb, n, i
+    logical finished
+    real(8), allocatable :: ngb_dist_(:)
+    integer, allocatable :: final_ngb_idx(:)
+
+    if (present(ngb_bunch)) then
+      nb = ngb_bunch
+    else
+      nb = 50
+    end if
+
+    if (.not. allocated(ngb_idx)) allocate(ngb_idx(nb))
+    allocate(ngb_dist_(size(ngb_idx)))
+
+    ! recursive subroutine kdtree_search(this, x, ngb_idx, mute, start_node_, ngb_dist_, ngb_count_)
+    finished = .false.
+    do while (.not. finished)
+      call this%search(x, ngb_idx, mute=.true., ngb_dist_=ngb_dist_)
+      do i = 1, size(ngb_idx)
+        if (ngb_dist_(i) > radius) then
+          finished = .true.
+          exit
+        end if
+      end do
+      if (.not. finished) then
+        ! Increase search size by nb.
+        n = size(ngb_idx) + nb
+        deallocate(ngb_idx  ); allocate(ngb_idx  (n))
+        deallocate(ngb_dist_); allocate(ngb_dist_(n))
+      end if
+    end do
+
+    ! Remove ngb outside range.
+    allocate(final_ngb_idx(size(ngb_idx)))
+    n = 0
+    do i = 1, size(ngb_idx)
+      if (ngb_dist_(i) <= radius) then
+        n = n + 1
+        final_ngb_idx(n) = ngb_idx(i)
+      end if
+    end do
+    deallocate(ngb_idx); allocate(ngb_idx(n))
+    do i = 1, n
+      ngb_idx(i) = final_ngb_idx(i)
+    end do
+    deallocate(final_ngb_idx)
+    if (present(ngb_dist)) then
+      if (allocated(ngb_dist)) deallocate(ngb_dist)
+      allocate(ngb_dist(n))
+      n = 0
+      do i = 1, size(ngb_dist_)
+        if (ngb_dist_(i) <= radius) then
+          n = n + 1
+          ngb_dist(n) = ngb_dist_(i)
+        end if
+      end do
+    end if
+    deallocate(ngb_dist_)
+
+  end subroutine kdtree_range_search
 
   subroutine kdtree_final(this)
 
