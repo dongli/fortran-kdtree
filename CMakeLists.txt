@@ -4,12 +4,11 @@ project(kdtree LANGUAGES Fortran)
 
 if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -ffree-line-length-none")
-endif ()
-
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -Wall -Wextra -Warray-temporaries -Wconversion -fimplicit-none -fbacktrace -fcheck=all -ffpe-trap=zero,overflow,underflow -finit-real=nan")
-else ()
-  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -ffpe-summary=none -Ofast")
+  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -Wall -Wextra -Warray-temporaries -Wconversion -fimplicit-none -fbacktrace -fcheck=all -ffpe-trap=zero,overflow,underflow -finit-real=nan")
+  else ()
+    set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -ffpe-summary=none -Ofast")
+  endif ()
 endif ()
 
 set (CMAKE_Fortran_MODULE_DIRECTORY "${CMAKE_BINARY_DIR}")
