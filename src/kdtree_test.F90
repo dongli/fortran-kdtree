@@ -2,13 +2,13 @@ program kdtree_test
 
   use unit_test
   use node_placing_mod
-  use kdtree_mod
+  use kdtree
 
   implicit none
 
   integer num_seed
   integer, allocatable :: seed(:)
-  type(kdtree_type) kdtree
+  type(kdtree_type) tree
 
   type(test_suite_type) test_suite
 
@@ -38,6 +38,7 @@ program kdtree_test
   call test_case_create('Test 2D')
 
   call test_2d()
+  call test_2d_range_search()
 
   call test_suite_report()
 
@@ -65,8 +66,8 @@ contains
       call random_number(x(1,i))
     end do
 
-    call kdtree%build(x)
-    call kdtree%search([0.5d0], ngb_idx, ngb_dist_=ngb_dist)
+    call tree%build(x)
+    call tree%search([0.5d0], ngb_idx, ngb_dist_=ngb_dist)
 
     do i = 1, size(x, 2)
       if (all(ngb_idx /= i)) then
@@ -87,8 +88,8 @@ contains
 
     call node_placing([0.0d0,1.0d0,0.0d0,1.0d0], radius, x)
 
-    call kdtree%build(x)
-    call kdtree%search([0.5d0,0.5d0], ngb_idx, ngb_dist_=ngb_dist)
+    call tree%build(x)
+    call tree%search([0.5d0,0.5d0], ngb_idx, ngb_dist_=ngb_dist)
 
     do i = 1, size(x, 2)
       if (all(ngb_idx /= i)) then
@@ -98,7 +99,7 @@ contains
 
     fail_count = 0
     do j = 1, size(x, 2)
-      call kdtree%search(x(:,j), ngb_idx, ngb_dist_=ngb_dist)
+      call tree%search(x(:,j), ngb_idx, ngb_dist_=ngb_dist)
       do i = 1, size(x, 2)
         if (all(ngb_idx /= i)) then
           if (.not. all(norm2(x(:,i) - x(:,j)) > ngb_dist)) then
@@ -110,6 +111,30 @@ contains
     call assert_equal(fail_count, 0)
 
   end subroutine test_2d
+
+  subroutine test_2d_range_search()
+
+    real(8), allocatable :: x(:,:)
+    real(8) :: x0(2) = [0.5d0,0.5d0], r = 0.02d0
+    integer i, fail_count
+    integer, allocatable :: ngb_idx(:)
+
+    call node_placing([0.0d0,1.0d0,0.0d0,1.0d0], radius, x)
+
+    call tree%build(x)
+    call tree%range_search(x0, ngb_idx, r)
+
+    fail_count = 0
+    do i = 1, size(x, 2)
+      if (norm2(x(:,i) - x0) < r .and. .not. any(ngb_idx == i)) then
+        fail_count = fail_count + 1
+      end if
+    end do
+    call assert_equal(fail_count, 0)
+
+    deallocate(ngb_idx)
+
+  end subroutine test_2d_range_search
 
   real(8) function radius(x)
 
