@@ -25,6 +25,7 @@ set(sources
   src/node_placing_mod.F90
   src/qsort_mod.F90
   src/kdtree_mod.F90
+  src/kdtree.F90
 )
 
 add_library(kdtree ${sources})
