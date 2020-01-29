@@ -173,23 +173,25 @@ contains
 
     ! Check if the hypersphere with the radius as the distance of the farest neightbor intersects
     ! the splitting hyperplane.
-    if (node%part_dim /= 0) dist = abs(x(node%part_dim) - node%x(node%part_dim))
-    if (x(node%part_dim) < node%x(node%part_dim)) then
-      if (associated(node%left)) then
-        call this%search(x, ngb_idx, start_node_=node%left, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
-      end if
-      if (associated(node%right)) then
-        if (dist < ngb_dist(ngb_count)) then
+    if (node%part_dim /= 0) then
+      dist = abs(x(node%part_dim) - node%x(node%part_dim))
+      if (x(node%part_dim) < node%x(node%part_dim)) then
+        if (associated(node%left)) then
+          call this%search(x, ngb_idx, start_node_=node%left, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
+        end if
+        if (associated(node%right)) then
+          if (dist < ngb_dist(ngb_count)) then
+            call this%search(x, ngb_idx, start_node_=node%right, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
+          end if
+        end if
+      else
+        if (associated(node%right)) then
           call this%search(x, ngb_idx, start_node_=node%right, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
         end if
-      end if
-    else
-      if (associated(node%right)) then
-        call this%search(x, ngb_idx, start_node_=node%right, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
-      end if
-      if (associated(node%left)) then
-        if (dist < ngb_dist(ngb_count)) then
-          call this%search(x, ngb_idx, start_node_=node%left, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
+        if (associated(node%left)) then
+          if (dist < ngb_dist(ngb_count)) then
+            call this%search(x, ngb_idx, start_node_=node%left, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
+          end if
         end if
       end if
     end if
