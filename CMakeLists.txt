@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(kdtree LANGUAGES Fortran)
+project(fortran_kdtree LANGUAGES Fortran)
 
 if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -ffree-line-length-none")
@@ -28,9 +28,9 @@ set(sources
   src/kdtree.F90
 )
 
-add_library(kdtree ${sources})
+add_library(fortran_kdtree ${sources})
 
 if (RUN_TEST)
   add_executable(kdtree_test.exe src/kdtree_test.F90)
-  target_link_libraries(kdtree_test.exe kdtree fortran_unit_test)
+  target_link_libraries(kdtree_test.exe fortran_kdtree fortran_unit_test)
 endif ()
