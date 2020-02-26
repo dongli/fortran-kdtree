@@ -12,10 +12,12 @@ module kdtree_mod
   type kdtree_type
     type(node_type), pointer :: root_node => null()
   contains
-    procedure :: kdtree_build_1
-    procedure :: kdtree_build_2
+    procedure, private :: kdtree_build_1
+    procedure, private :: kdtree_build_2
     generic :: build => kdtree_build_1, kdtree_build_2
-    procedure :: search => kdtree_search
+    procedure, private :: kdtree_search_r4
+    procedure, private :: kdtree_search_r8
+    generic :: search => kdtree_search_r4, kdtree_search_r8
     procedure :: range_search => kdtree_range_search
     final :: kdtree_final
   end type kdtree_type
@@ -127,20 +129,20 @@ contains
 
   end subroutine kdtree_build_2
 
-  recursive subroutine kdtree_search(this, x, ngb_idx, mute, start_node_, ngb_dist_, ngb_count_)
+  recursive subroutine kdtree_search_r4(this, x, ngb_idx, mute, start_node_, ngb_dist, ngb_count_)
 
     class(kdtree_type), intent(in) :: this
-    real(8), intent(in) :: x(:)
+    real(4), intent(in) :: x(:)
     integer, intent(inout) :: ngb_idx(:)
     logical, intent(in), optional :: mute
     type(node_type), intent(in), target, optional :: start_node_
-    real(8), intent(inout), target, optional :: ngb_dist_(:)
+    real(4), intent(inout), target, optional :: ngb_dist(:)
     integer, intent(inout), target, optional :: ngb_count_
 
     logical mute_
-    real(8) dist
+    real(4) dist
     type(node_type), pointer :: node
-    real(8), pointer :: ngb_dist(:)
+    real(4), pointer :: ngb_dist_(:)
     integer, pointer :: ngb_count
 
     if (present(mute)) then
@@ -160,16 +162,16 @@ contains
       ngb_count = 0
       node_access_count = 0
     end if
-    if (present(ngb_dist_)) then
-      ngb_dist => ngb_dist_
+    if (present(ngb_dist)) then
+      ngb_dist_ => ngb_dist
     else
-      allocate(ngb_dist(size(ngb_idx)))
+      allocate(ngb_dist_(size(ngb_idx)))
     end if
 
     node_access_count = node_access_count + 1
     dist = norm2(x - node%x)
 
-    call record_potential_ngb(ngb_count, ngb_idx, ngb_dist, dist, node%global_idx)
+    call record_potential_ngb_r4(ngb_count, ngb_idx, ngb_dist_, dist, node%global_idx)
 
     ! Check if the hypersphere with the radius as the distance of the farest neightbor intersects
     ! the splitting hyperplane.
@@ -177,32 +179,109 @@ contains
       dist = abs(x(node%part_dim) - node%x(node%part_dim))
       if (x(node%part_dim) < node%x(node%part_dim)) then
         if (associated(node%left)) then
-          call this%search(x, ngb_idx, start_node_=node%left, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
+          call this%search(x, ngb_idx, start_node_=node%left, ngb_dist=ngb_dist_, ngb_count_=ngb_count)
         end if
         if (associated(node%right)) then
-          if (dist < ngb_dist(ngb_count)) then
-            call this%search(x, ngb_idx, start_node_=node%right, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
+          if (dist < ngb_dist_(ngb_count)) then
+            call this%search(x, ngb_idx, start_node_=node%right, ngb_dist=ngb_dist_, ngb_count_=ngb_count)
           end if
         end if
       else
         if (associated(node%right)) then
-          call this%search(x, ngb_idx, start_node_=node%right, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
+          call this%search(x, ngb_idx, start_node_=node%right, ngb_dist=ngb_dist_, ngb_count_=ngb_count)
         end if
         if (associated(node%left)) then
-          if (dist < ngb_dist(ngb_count)) then
-            call this%search(x, ngb_idx, start_node_=node%left, ngb_dist_=ngb_dist, ngb_count_=ngb_count)
+          if (dist < ngb_dist_(ngb_count)) then
+            call this%search(x, ngb_idx, start_node_=node%left, ngb_dist=ngb_dist_, ngb_count_=ngb_count)
           end if
         end if
       end if
     end if
 
-    if (.not. present(ngb_dist_ )) deallocate(ngb_dist )
+    if (.not. present(ngb_dist  )) deallocate(ngb_dist_)
     if (.not. present(ngb_count_)) deallocate(ngb_count)
     if (.not. present(start_node_) .and. .not. mute_) then
       write(*, '("Searched ", I0, " of ", I0, " nodes.")') node_access_count, this%root_node%num_point
     end if
 
-  end subroutine kdtree_search
+  end subroutine kdtree_search_r4
+
+  recursive subroutine kdtree_search_r8(this, x, ngb_idx, mute, start_node_, ngb_dist, ngb_count_)
+
+    class(kdtree_type), intent(in) :: this
+    real(8), intent(in) :: x(:)
+    integer, intent(inout) :: ngb_idx(:)
+    logical, intent(in), optional :: mute
+    type(node_type), intent(in), target, optional :: start_node_
+    real(8), intent(inout), target, optional :: ngb_dist(:)
+    integer, intent(inout), target, optional :: ngb_count_
+
+    logical mute_
+    real(8) dist
+    type(node_type), pointer :: node
+    real(8), pointer :: ngb_dist_(:)
+    integer, pointer :: ngb_count
+
+    if (present(mute)) then
+      mute_ = mute
+    else
+      mute_ = .true.
+    end if
+    if (present(start_node_)) then
+      node => start_node_
+    else
+      node => this%root_node
+    end if
+    if (present(ngb_count_)) then
+      ngb_count => ngb_count_
+    else
+      allocate(ngb_count)
+      ngb_count = 0
+      node_access_count = 0
+    end if
+    if (present(ngb_dist)) then
+      ngb_dist_ => ngb_dist
+    else
+      allocate(ngb_dist_(size(ngb_idx)))
+    end if
+
+    node_access_count = node_access_count + 1
+    dist = norm2(x - node%x)
+
+    call record_potential_ngb_r8(ngb_count, ngb_idx, ngb_dist_, dist, node%global_idx)
+
+    ! Check if the hypersphere with the radius as the distance of the farest neightbor intersects
+    ! the splitting hyperplane.
+    if (node%part_dim /= 0) then
+      dist = abs(x(node%part_dim) - node%x(node%part_dim))
+      if (x(node%part_dim) < node%x(node%part_dim)) then
+        if (associated(node%left)) then
+          call this%search(x, ngb_idx, start_node_=node%left, ngb_dist=ngb_dist_, ngb_count_=ngb_count)
+        end if
+        if (associated(node%right)) then
+          if (dist < ngb_dist_(ngb_count)) then
+            call this%search(x, ngb_idx, start_node_=node%right, ngb_dist=ngb_dist_, ngb_count_=ngb_count)
+          end if
+        end if
+      else
+        if (associated(node%right)) then
+          call this%search(x, ngb_idx, start_node_=node%right, ngb_dist=ngb_dist_, ngb_count_=ngb_count)
+        end if
+        if (associated(node%left)) then
+          if (dist < ngb_dist_(ngb_count)) then
+            call this%search(x, ngb_idx, start_node_=node%left, ngb_dist=ngb_dist_, ngb_count_=ngb_count)
+          end if
+        end if
+      end if
+    end if
+
+    if (.not. present(ngb_dist  )) deallocate(ngb_dist_)
+    if (.not. present(ngb_count_)) deallocate(ngb_count)
+    if (.not. present(start_node_) .and. .not. mute_) then
+      write(*, '("Searched ", I0, " of ", I0, " nodes.")') node_access_count, this%root_node%num_point
+    end if
+
+  end subroutine kdtree_search_r8
 
   subroutine kdtree_range_search(this, x, ngb_idx, radius, ngb_dist, ngb_bunch)
 
@@ -230,7 +309,7 @@ contains
     ! recursive subroutine kdtree_search(this, x, ngb_idx, mute, start_node_, ngb_dist_, ngb_count_)
     finished = .false.
     do while (.not. finished)
-      call this%search(x, ngb_idx, mute=.true., ngb_dist_=ngb_dist_)
+      call this%search(x, ngb_idx, mute=.true., ngb_dist=ngb_dist_)
       do i = 1, size(ngb_idx)
         if (ngb_dist_(i) > radius) then
           finished = .true.
@@ -282,12 +361,12 @@ contains
 
   end subroutine kdtree_final
 
-  subroutine record_potential_ngb(ngb_count, ngb_idx, ngb_dist, dist, global_idx)
+  subroutine record_potential_ngb_r4(ngb_count, ngb_idx, ngb_dist, dist, global_idx)
 
     integer, intent(inout) :: ngb_count
     integer, intent(inout) :: ngb_idx(:)
-    real(8), intent(inout) :: ngb_dist(:)
-    real(8), intent(in) :: dist
+    real(4), intent(inout) :: ngb_dist(:)
+    real(4), intent(in) :: dist
     integer, intent(in) :: global_idx
 
     integer i, j
@@ -328,6 +407,41 @@ contains
     ! write(*, *)
     ! pause
 
-  end subroutine record_potential_ngb
+  end subroutine record_potential_ngb_r4
+
+  subroutine record_potential_ngb_r8(ngb_count, ngb_idx, ngb_dist, dist, global_idx)
+
+    integer, intent(inout) :: ngb_count
+    integer, intent(inout) :: ngb_idx(:)
+    real(8), intent(inout) :: ngb_dist(:)
+    real(8), intent(in) :: dist
+    integer, intent(in) :: global_idx
+
+    integer i, j
+    logical replaced
+
+    ! This acts as a priority queue.
+    replaced = .false.
+    do i = 1, ngb_count
+      if (ngb_idx(i) == global_idx) return
+      if (dist < ngb_dist(i)) then
+        ngb_count = min(ngb_count + 1, size(ngb_idx))
+        do j = ngb_count, i + 1, -1
+          ngb_dist(j) = ngb_dist(j-1)
+          ngb_idx (j) = ngb_idx (j-1)
+        end do
+        ngb_dist(i) = dist
+        ngb_idx (i) = global_idx
+        replaced    = .true.
+        exit
+      end if
+    end do
+    if (.not. replaced .and. ngb_count < size(ngb_idx)) then
+      ngb_count           = ngb_count + 1
+      ngb_dist(ngb_count) = dist
+      ngb_idx (ngb_count) = global_idx
+    end if
+
+  end subroutine record_potential_ngb_r8
 
 end module kdtree_mod
