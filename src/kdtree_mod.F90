@@ -1,6 +1,6 @@
 module kdtree_mod
 
-  use utils_mod
+  use kdtree_utils_mod
   use node_mod
 
   implicit none

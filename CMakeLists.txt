@@ -20,7 +20,7 @@ if (EXISTS ${PROJECT_SOURCE_DIR}/lib/unit-test/CMakeLists.txt)
 endif ()
 
 set(sources
-  src/utils_mod.F90
+  src/kdtree_utils_mod.F90
   src/node_mod.F90
   src/node_placing_mod.F90
   src/qsort_mod.F90

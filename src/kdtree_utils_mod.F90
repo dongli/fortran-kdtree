@@ -1,4 +1,4 @@
-module utils_mod
+module kdtree_utils_mod
 
   use qsort_mod
 
@@ -80,4 +80,4 @@ contains
 
   end function variance_r8
 
-end module utils_mod
+end module kdtree_utils_mod
