@@ -75,12 +75,18 @@ contains
     end if
     call node%create_child_nodes(part_dim, num_dim, num_point)
 
+    node%global_idx = -1
     do i = 1, num_point
       if (x(part_dim,i) < xmed) then
         call node%left %add_point(x(:,i), node%global_idx_array(i))
       else if (x(part_dim,i) > xmed) then
         call node%right%add_point(x(:,i), node%global_idx_array(i))
       else
+        ! If there is already a point on the cut line, save it to both sides.
+        if (node%global_idx /= -1) then
+          call node%left %add_point(node%x, node%global_idx)
+          call node%right%add_point(node%x, node%global_idx)
+        end if
         ! Save the cut point.
         node%x = x(:,i)
         node%global_idx = node%global_idx_array(i)
