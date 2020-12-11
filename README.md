@@ -7,7 +7,7 @@ This repository is a Fortran implementation of KD-Tree. We need KD-Tree in scien
 # Usage
 
 ```fortran
-  use kdtree_mod
+  use kdtree
 
   real(8), allocatable :: x(:,:)       ! num_dim, num_point
   integer, allocatable :: ngb_idx(:,:) ! num_ngb, num_point
