@@ -134,7 +134,7 @@ contains
 
   end subroutine node_discard_arrays
 
-  subroutine node_final(this)
+  recursive subroutine node_final(this)
 
     type(node_type), intent(inout) :: this
 
