@@ -64,7 +64,9 @@ contains
       node%num_point = num_point
       ! Create global index array.
       allocate(node%global_idx_array(num_point))
-      node%global_idx_array = [(i, i = 1, num_point)]
+      do i = 1, num_point
+        node%global_idx_array(i) = i
+      end do
     end if
     if (num_point == 1) then
       ! Reach the leaf node, return back.
