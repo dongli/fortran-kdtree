@@ -67,7 +67,7 @@ contains
     end do
 
     call tree%build(x)
-    call tree%search([0.5d0], ngb_idx, ngb_dist_=ngb_dist)
+    call tree%search([0.5d0], ngb_idx, ngb_dist=ngb_dist)
 
     do i = 1, size(x, 2)
       if (all(ngb_idx /= i)) then
@@ -89,7 +89,7 @@ contains
     call node_placing([0.0d0,1.0d0,0.0d0,1.0d0], radius, x)
 
     call tree%build(x)
-    call tree%search([0.5d0,0.5d0], ngb_idx, ngb_dist_=ngb_dist)
+    call tree%search([0.5d0,0.5d0], ngb_idx, ngb_dist=ngb_dist)
 
     do i = 1, size(x, 2)
       if (all(ngb_idx /= i)) then
@@ -99,7 +99,7 @@ contains
 
     fail_count = 0
     do j = 1, size(x, 2)
-      call tree%search(x(:,j), ngb_idx, ngb_dist_=ngb_dist)
+      call tree%search(x(:,j), ngb_idx, ngb_dist=ngb_dist)
       do i = 1, size(x, 2)
         if (all(ngb_idx /= i)) then
           if (.not. all(norm2(x(:,i) - x(:,j)) > ngb_dist)) then

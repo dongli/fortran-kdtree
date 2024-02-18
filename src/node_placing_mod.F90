@@ -25,24 +25,24 @@ module node_placing_mod
 
 contains
 
-  subroutine node_placing(box, radius, xy, init_num_node_)
+  subroutine node_placing(box, radius, xy, init_num_node)
 
     real(8), intent(in) :: box(4)
     procedure(node_radius_interface) radius
     real(8), intent(out), allocatable :: xy(:,:)
-    integer, intent(in), optional :: init_num_node_
+    integer, intent(in), optional :: init_num_node
 
-    integer init_num_node ! Initial guessed node number
-    integer num_node      ! Node number
-    integer num_pdp       ! PDP number
+    integer init_num_node_opt ! Initial guessed node number
+    integer num_node          ! Node number
+    integer num_pdp           ! PDP number
     integer i, im(1), nw
-    integer outside_count ! Counter for PDPs that are outside box
-    integer idx_left      ! Leftmost index of PDP within the radius of a grid
-    integer idx_right     ! Rightmost index of PDP within the radius of a grid
+    integer outside_count     ! Counter for PDPs that are outside box
+    integer idx_left          ! Leftmost index of PDP within the radius of a grid
+    integer idx_right         ! Rightmost index of PDP within the radius of a grid
     real(8) rand, dx
-    real(8) r             ! Radius or resolution of grid
-    real(8) ym(1)         ! Minimum y in PDPs
-    real(8) d             ! Distance between placed node and PDPs
+    real(8) r                 ! Radius or resolution of grid
+    real(8) ym(1)             ! Minimum y in PDPs
+    real(8) d                 ! Distance between placed node and PDPs
     real(8) angle_left
     real(8) angle_right
     real(8) angle
@@ -51,12 +51,12 @@ contains
     if (allocated(xy)) deallocate(xy)
 
     ! Set the initial node number.
-    init_num_node = merge(init_num_node_, 10000, present(init_num_node_))
+    init_num_node_opt = 10000; if (present(init_num_node)) init_num_node_opt = init_num_node
 
     num_node = 0
-    num_pdp = init_num_node
-    allocate(pdp(2,init_num_node)) ! Allocate more memory to accommodate increasing PDPs.
-    allocate(xy(2,init_num_node))
+    num_pdp = init_num_node_opt
+    allocate(pdp(2,init_num_node_opt)) ! Allocate more memory to accommodate increasing PDPs.
+    allocate(xy (2,init_num_node_opt))
 
     ! Place initial PDPs along bottom.
     dx = (box(2) - box(1)) / num_pdp
@@ -124,14 +124,14 @@ contains
       ! Find the next lowest PDP.
       ym = minval(pdp(2,:num_pdp)); im = minloc(pdp(2,:num_pdp))
       ! Enlarge array size if necessary.
-      if (num_node == init_num_node) then
-        init_num_node = init_num_node * 2
-        call resize_array(xy, dim=[2], new_size=[init_num_node])
+      if (num_node == init_num_node_opt) then
+        init_num_node_opt = init_num_node_opt * 2
+        call resize_array(xy, dim=2, new_size=init_num_node_opt)
       end if
     end do
 
     ! Clean zeros from output array.
-    call resize_array(xy, dim=[2], new_size=[num_node])
+    call resize_array(xy, dim=2, new_size=num_node)
 
     deallocate(pdp)
 
@@ -140,25 +140,27 @@ contains
   subroutine resize_array(x, dim, new_size)
 
     real(8), intent(inout), allocatable :: x(:,:)
-    integer, intent(in) :: dim(:)
-    integer, intent(in) :: new_size(:)
+    integer, intent(in) :: dim
+    integer, intent(in) :: new_size
 
     real(8), allocatable :: y(:,:)
-    integer n(2), i
+    integer nx(2), ny(2), i
 
-    n = shape(x)
+    nx = shape(x)
+    ny = nx
+    ny(dim) = new_size
 
-    do i = 1, size(dim)
-      n(dim(i)) = new_size(i)
-    end do
+    allocate(y(ny(1),ny(2)))
 
-    allocate(y(n(1),n(2)))
-
-    y(:n(1),:n(2)) = x(:n(1),:n(2))
+    if (nx(dim) <= ny(dim)) then
+      y(:nx(1),:nx(2)) = x(:nx(1),:nx(2))
+    else
+      y(:ny(1),:ny(2)) = x(:ny(1),:ny(2))
+    end if
 
     deallocate(x)
 
-    allocate(x(n(1),n(2)))
+    allocate(x(ny(1),ny(2)))
 
     x = y
 

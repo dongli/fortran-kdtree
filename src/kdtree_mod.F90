@@ -26,11 +26,11 @@ module kdtree_mod
 
 contains
 
-  recursive subroutine kdtree_build_1(this, x, start_node_)
+  recursive subroutine kdtree_build_1(this, x, start_node)
 
     class(kdtree_type), intent(inout) :: this
     real(8), intent(in) :: x(:,:)
-    type(node_type), intent(inout), target, optional :: start_node_
+    type(node_type), intent(inout), target, optional :: start_node
 
     integer num_point, num_dim, part_dim, i, d
     real(8) xvar, max_xvar
@@ -55,8 +55,8 @@ contains
     xmed = median(x(part_dim,:))
 
     ! Create tree structures.
-    if (present(start_node_)) then
-      node => start_node_
+    if (present(start_node)) then
+      node => start_node
     else
       allocate(this%root_node)
       call this%root_node%init()
@@ -102,12 +102,12 @@ contains
 
     ! Recursively build subtrees.
     if (node%left%num_point > 0) then
-      call this%build(node%left%x_array, start_node_=node%left)
+      call this%build(node%left%x_array, start_node=node%left)
     else
       deallocate(node%left)
     end if
     if (node%right%num_point > 0) then
-      call this%build(node%right%x_array, start_node_=node%right)
+      call this%build(node%right%x_array, start_node=node%right)
     else
       deallocate(node%right)
     end if
@@ -137,49 +137,45 @@ contains
 
   end subroutine kdtree_build_2
 
-  recursive subroutine kdtree_search_r4(this, x, ngb_idx, mute, start_node_, ngb_dist, ngb_count_)
+  recursive subroutine kdtree_search_r4(this, x, ngb_idx, mute, start_node, ngb_dist, ngb_count)
 
     class(kdtree_type), intent(in) :: this
     real(4), intent(in) :: x(:)
     integer, intent(inout) :: ngb_idx(:)
     logical, intent(in), optional :: mute
-    type(node_type), intent(in), target, optional :: start_node_
+    type(node_type), intent(in), target, optional :: start_node
     real(4), intent(inout), target, optional :: ngb_dist(:)
-    integer, intent(inout), target, optional :: ngb_count_
+    integer, intent(inout), target, optional :: ngb_count
 
-    logical mute_
+    logical mute_opt
     real(4) dist
     type(node_type), pointer :: node
-    real(4), pointer :: ngb_dist_(:)
-    integer, pointer :: ngb_count
+    real(4), pointer :: ngb_dist_opt(:)
+    integer, pointer :: ngb_count_opt
 
-    if (present(mute)) then
-      mute_ = mute
-    else
-      mute_ = .true.
-    end if
-    if (present(start_node_)) then
-      node => start_node_
+    mute_opt = .true.; if (present(mute)) mute_opt = mute
+    if (present(start_node)) then
+      node => start_node
     else
       node => this%root_node
     end if
-    if (present(ngb_count_)) then
-      ngb_count => ngb_count_
+    if (present(ngb_count)) then
+      ngb_count_opt => ngb_count
     else
-      allocate(ngb_count)
-      ngb_count = 0
+      allocate(ngb_count_opt)
+      ngb_count_opt = 0
       node_access_count = 0
     end if
     if (present(ngb_dist)) then
-      ngb_dist_ => ngb_dist
+      ngb_dist_opt => ngb_dist
     else
-      allocate(ngb_dist_(size(ngb_idx)))
+      allocate(ngb_dist_opt(size(ngb_idx)))
     end if
 
     node_access_count = node_access_count + 1
     dist = norm2(x - node%x)
 
-    call record_potential_ngb_r4(ngb_count, ngb_idx, ngb_dist_, dist, node%global_idx)
+    call record_potential_ngb_r4(ngb_count_opt, ngb_idx, ngb_dist_opt, dist, node%global_idx)
 
     ! Check if the hypersphere with the radius as the distance of the farest neightbor intersects
     ! the splitting hyperplane.
@@ -187,76 +183,72 @@ contains
       dist = abs(x(node%part_dim) - node%x(node%part_dim))
       if (x(node%part_dim) < node%x(node%part_dim)) then
         if (associated(node%left)) then
-          call this%search(x, ngb_idx, start_node_=node%left, ngb_dist=ngb_dist_, ngb_count_=ngb_count)
+          call this%search(x, ngb_idx, start_node=node%left, ngb_dist=ngb_dist_opt, ngb_count=ngb_count_opt)
         end if
         if (associated(node%right)) then
-          if (dist < ngb_dist_(ngb_count)) then
-            call this%search(x, ngb_idx, start_node_=node%right, ngb_dist=ngb_dist_, ngb_count_=ngb_count)
+          if (dist < ngb_dist_opt(ngb_count_opt)) then
+            call this%search(x, ngb_idx, start_node=node%right, ngb_dist=ngb_dist_opt, ngb_count=ngb_count_opt)
           end if
         end if
       else
         if (associated(node%right)) then
-          call this%search(x, ngb_idx, start_node_=node%right, ngb_dist=ngb_dist_, ngb_count_=ngb_count)
+          call this%search(x, ngb_idx, start_node=node%right, ngb_dist=ngb_dist_opt, ngb_count=ngb_count_opt)
         end if
         if (associated(node%left)) then
-          if (dist < ngb_dist_(ngb_count)) then
-            call this%search(x, ngb_idx, start_node_=node%left, ngb_dist=ngb_dist_, ngb_count_=ngb_count)
+          if (dist < ngb_dist_opt(ngb_count_opt)) then
+            call this%search(x, ngb_idx, start_node=node%left, ngb_dist=ngb_dist_opt, ngb_count=ngb_count_opt)
           end if
         end if
       end if
     end if
 
-    if (.not. present(ngb_dist  )) deallocate(ngb_dist_)
-    if (.not. present(ngb_count_)) deallocate(ngb_count)
-    if (.not. present(start_node_) .and. .not. mute_) then
+    if (.not. present(ngb_dist )) deallocate(ngb_dist_opt)
+    if (.not. present(ngb_count)) deallocate(ngb_count_opt)
+    if (.not. present(start_node) .and. .not. mute_opt) then
       write(*, '("Searched ", I0, " of ", I0, " nodes.")') node_access_count, this%root_node%num_point
     end if
 
   end subroutine kdtree_search_r4
 
-  recursive subroutine kdtree_search_r8(this, x, ngb_idx, mute, start_node_, ngb_dist, ngb_count_)
+  recursive subroutine kdtree_search_r8(this, x, ngb_idx, mute, start_node, ngb_dist, ngb_count)
 
     class(kdtree_type), intent(in) :: this
     real(8), intent(in) :: x(:)
     integer, intent(inout) :: ngb_idx(:)
     logical, intent(in), optional :: mute
-    type(node_type), intent(in), target, optional :: start_node_
+    type(node_type), intent(in), target, optional :: start_node
     real(8), intent(inout), target, optional :: ngb_dist(:)
-    integer, intent(inout), target, optional :: ngb_count_
+    integer, intent(inout), target, optional :: ngb_count
 
-    logical mute_
+    logical mute_opt
     real(8) dist
     type(node_type), pointer :: node
-    real(8), pointer :: ngb_dist_(:)
-    integer, pointer :: ngb_count
+    real(8), pointer :: ngb_dist_opt(:)
+    integer, pointer :: ngb_count_opt
 
-    if (present(mute)) then
-      mute_ = mute
-    else
-      mute_ = .true.
-    end if
-    if (present(start_node_)) then
-      node => start_node_
+    mute_opt = .true.; if (present(mute)) mute_opt = mute
+    if (present(start_node)) then
+      node => start_node
     else
       node => this%root_node
     end if
-    if (present(ngb_count_)) then
-      ngb_count => ngb_count_
+    if (present(ngb_count)) then
+      ngb_count_opt => ngb_count
     else
-      allocate(ngb_count)
-      ngb_count = 0
+      allocate(ngb_count_opt)
+      ngb_count_opt = 0
       node_access_count = 0
     end if
     if (present(ngb_dist)) then
-      ngb_dist_ => ngb_dist
+      ngb_dist_opt => ngb_dist
     else
-      allocate(ngb_dist_(size(ngb_idx)))
+      allocate(ngb_dist_opt(size(ngb_idx)))
     end if
 
     node_access_count = node_access_count + 1
     dist = norm2(x - node%x)
 
-    call record_potential_ngb_r8(ngb_count, ngb_idx, ngb_dist_, dist, node%global_idx)
+    call record_potential_ngb_r8(ngb_count_opt, ngb_idx, ngb_dist_opt, dist, node%global_idx)
 
     ! Check if the hypersphere with the radius as the distance of the farest neightbor intersects
     ! the splitting hyperplane.
@@ -264,28 +256,28 @@ contains
       dist = abs(x(node%part_dim) - node%x(node%part_dim))
       if (x(node%part_dim) < node%x(node%part_dim)) then
         if (associated(node%left)) then
-          call this%search(x, ngb_idx, start_node_=node%left, ngb_dist=ngb_dist_, ngb_count_=ngb_count)
+          call this%search(x, ngb_idx, start_node=node%left, ngb_dist=ngb_dist_opt, ngb_count=ngb_count_opt)
         end if
         if (associated(node%right)) then
-          if (dist < ngb_dist_(ngb_count)) then
-            call this%search(x, ngb_idx, start_node_=node%right, ngb_dist=ngb_dist_, ngb_count_=ngb_count)
+          if (dist < ngb_dist_opt(ngb_count_opt)) then
+            call this%search(x, ngb_idx, start_node=node%right, ngb_dist=ngb_dist_opt, ngb_count=ngb_count_opt)
           end if
         end if
       else
         if (associated(node%right)) then
-          call this%search(x, ngb_idx, start_node_=node%right, ngb_dist=ngb_dist_, ngb_count_=ngb_count)
+          call this%search(x, ngb_idx, start_node=node%right, ngb_dist=ngb_dist_opt, ngb_count=ngb_count_opt)
         end if
         if (associated(node%left)) then
-          if (dist < ngb_dist_(ngb_count)) then
-            call this%search(x, ngb_idx, start_node_=node%left, ngb_dist=ngb_dist_, ngb_count_=ngb_count)
+          if (dist < ngb_dist_opt(ngb_count_opt)) then
+            call this%search(x, ngb_idx, start_node=node%left, ngb_dist=ngb_dist_opt, ngb_count=ngb_count_opt)
           end if
         end if
       end if
     end if
 
-    if (.not. present(ngb_dist  )) deallocate(ngb_dist_)
-    if (.not. present(ngb_count_)) deallocate(ngb_count)
-    if (.not. present(start_node_) .and. .not. mute_) then
+    if (.not. present(ngb_dist )) deallocate(ngb_dist_opt)
+    if (.not. present(ngb_count)) deallocate(ngb_count_opt)
+    if (.not. present(start_node) .and. .not. mute_opt) then
       write(*, '("Searched ", I0, " of ", I0, " nodes.")') node_access_count, this%root_node%num_point
     end if
 
@@ -302,7 +294,7 @@ contains
 
     integer nb, n, i
     logical finished
-    real(8), allocatable :: ngb_dist_(:)
+    real(8), allocatable :: ngb_dist_opt(:)
     integer, allocatable :: final_ngb_idx(:)
 
     if (present(ngb_bunch)) then
@@ -312,14 +304,13 @@ contains
     end if
 
     if (.not. allocated(ngb_idx)) allocate(ngb_idx(nb))
-    allocate(ngb_dist_(size(ngb_idx)))
+    allocate(ngb_dist_opt(size(ngb_idx)))
 
-    ! recursive subroutine kdtree_search(this, x, ngb_idx, mute, start_node_, ngb_dist_, ngb_count_)
     finished = .false.
     do while (.not. finished)
-      call this%search(x, ngb_idx, mute=.true., ngb_dist=ngb_dist_)
+      call this%search(x, ngb_idx, mute=.true., ngb_dist=ngb_dist_opt)
       do i = 1, size(ngb_idx)
-        if (ngb_dist_(i) > radius) then
+        if (ngb_dist_opt(i) > radius) then
           finished = .true.
           exit
         end if
@@ -327,8 +318,8 @@ contains
       if (.not. finished) then
         ! Increase search size by nb.
         n = size(ngb_idx) + nb
-        deallocate(ngb_idx  ); allocate(ngb_idx  (n))
-        deallocate(ngb_dist_); allocate(ngb_dist_(n))
+        deallocate(ngb_idx ); allocate(ngb_idx (n))
+        deallocate(ngb_dist_opt); allocate(ngb_dist_opt(n))
       end if
     end do
 
@@ -336,7 +327,7 @@ contains
     allocate(final_ngb_idx(size(ngb_idx)))
     n = 0
     do i = 1, size(ngb_idx)
-      if (ngb_dist_(i) <= radius) then
+      if (ngb_dist_opt(i) <= radius) then
         n = n + 1
         final_ngb_idx(n) = ngb_idx(i)
       end if
@@ -350,14 +341,14 @@ contains
       if (allocated(ngb_dist)) deallocate(ngb_dist)
       allocate(ngb_dist(n))
       n = 0
-      do i = 1, size(ngb_dist_)
-        if (ngb_dist_(i) <= radius) then
+      do i = 1, size(ngb_dist_opt)
+        if (ngb_dist_opt(i) <= radius) then
           n = n + 1
-          ngb_dist(n) = ngb_dist_(i)
+          ngb_dist(n) = ngb_dist_opt(i)
         end if
       end do
     end if
-    deallocate(ngb_dist_)
+    deallocate(ngb_dist_opt)
 
   end subroutine kdtree_range_search
 
@@ -369,9 +360,9 @@ contains
 
   end subroutine kdtree_final
 
-  subroutine record_potential_ngb_r4(ngb_count, ngb_idx, ngb_dist, dist, global_idx)
+  subroutine record_potential_ngb_r4(ngb_count_opt, ngb_idx, ngb_dist, dist, global_idx)
 
-    integer, intent(inout) :: ngb_count
+    integer, intent(inout) :: ngb_count_opt
     integer, intent(inout) :: ngb_idx(:)
     real(4), intent(inout) :: ngb_dist(:)
     real(4), intent(in) :: dist
@@ -382,11 +373,11 @@ contains
 
     ! This acts as a priority queue.
     replaced = .false.
-    do i = 1, ngb_count
+    do i = 1, ngb_count_opt
       if (ngb_idx(i) == global_idx) return
       if (dist < ngb_dist(i)) then
-        ngb_count = min(ngb_count + 1, size(ngb_idx))
-        do j = ngb_count, i + 1, -1
+        ngb_count_opt = min(ngb_count_opt + 1, size(ngb_idx))
+        do j = ngb_count_opt, i + 1, -1
           ngb_dist(j) = ngb_dist(j-1)
           ngb_idx (j) = ngb_idx (j-1)
         end do
@@ -396,19 +387,19 @@ contains
         exit
       end if
     end do
-    if (.not. replaced .and. ngb_count < size(ngb_idx)) then
-      ngb_count           = ngb_count + 1
-      ngb_dist(ngb_count) = dist
-      ngb_idx (ngb_count) = global_idx
+    if (.not. replaced .and. ngb_count_opt < size(ngb_idx)) then
+      ngb_count_opt           = ngb_count_opt + 1
+      ngb_dist(ngb_count_opt) = dist
+      ngb_idx (ngb_count_opt) = global_idx
     end if
 
     ! write(*, '("===== ", I0, X, I0)') global_idx
-    ! do i = 1, ngb_count
+    ! do i = 1, ngb_count_opt
     !   write(*, '(I8)', advance='no') ngb_idx(i)
     !   if (mod(i, 20) == 0) write(*, *)
     ! end do
     ! write(*, *)
-    ! do i = 1, ngb_count
+    ! do i = 1, ngb_count_opt
     !   write(*, '(F8.4)', advance='no') ngb_dist(i)
     !   if (mod(i, 20) == 0) write(*, *)
     ! end do
@@ -417,9 +408,9 @@ contains
 
   end subroutine record_potential_ngb_r4
 
-  subroutine record_potential_ngb_r8(ngb_count, ngb_idx, ngb_dist, dist, global_idx)
+  subroutine record_potential_ngb_r8(ngb_count_opt, ngb_idx, ngb_dist, dist, global_idx)
 
-    integer, intent(inout) :: ngb_count
+    integer, intent(inout) :: ngb_count_opt
     integer, intent(inout) :: ngb_idx(:)
     real(8), intent(inout) :: ngb_dist(:)
     real(8), intent(in) :: dist
@@ -430,11 +421,11 @@ contains
 
     ! This acts as a priority queue.
     replaced = .false.
-    do i = 1, ngb_count
+    do i = 1, ngb_count_opt
       if (ngb_idx(i) == global_idx) return
       if (dist < ngb_dist(i)) then
-        ngb_count = min(ngb_count + 1, size(ngb_idx))
-        do j = ngb_count, i + 1, -1
+        ngb_count_opt = min(ngb_count_opt + 1, size(ngb_idx))
+        do j = ngb_count_opt, i + 1, -1
           ngb_dist(j) = ngb_dist(j-1)
           ngb_idx (j) = ngb_idx (j-1)
         end do
@@ -444,10 +435,10 @@ contains
         exit
       end if
     end do
-    if (.not. replaced .and. ngb_count < size(ngb_idx)) then
-      ngb_count           = ngb_count + 1
-      ngb_dist(ngb_count) = dist
-      ngb_idx (ngb_count) = global_idx
+    if (.not. replaced .and. ngb_count_opt < size(ngb_idx)) then
+      ngb_count_opt           = ngb_count_opt + 1
+      ngb_dist(ngb_count_opt) = dist
+      ngb_idx (ngb_count_opt) = global_idx
     end if
 
   end subroutine record_potential_ngb_r8
